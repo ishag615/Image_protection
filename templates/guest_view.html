@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PrivacyGuard – Protected Documents</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .navbar {
+            background: white;
+            padding: 15px 30px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .navbar h2 { 
+            color: #667eea;
+            font-size: 24px;
+        }
+        
+        .navbar button { 
+            background: #d32f2f; 
+            color: white; 
+            border: none; 
+            padding: 8px 16px; 
+            border-radius: 4px; 
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .navbar button:hover { background: #b71c1c; }
+        
+        .container { max-width: 1000px; margin: 0 auto; }
+        
+        .main-content {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .main-content h3 { 
+            color: #333; 
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        
+        .info-banner {
+            background: #e3f2fd;
+            padding: 15px;
+            border-left: 4px solid #2196f3;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            color: #1565c0;
+            line-height: 1.6;
+        }
+        
+        .documents-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .document-card {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            transition: all 0.3s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
+        .document-card:hover {
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            transform: translateY(-5px);
+        }
+        
+        .document-card h4 { 
+            color: #333; 
+            margin-bottom: 10px; 
+            word-break: break-word;
+            font-size: 16px;
+        }
+        
+        .document-card p { 
+            color: #666; 
+            font-size: 12px; 
+            margin: 8px 0; 
+            line-height: 1.5;
+        }
+        
+        .document-info {
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-size: 12px;
+        }
+        
+        .document-info strong {
+            color: #667eea;
+        }
+        
+        .risk-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .risk-high { 
+            background: #ffebee; 
+            color: #d32f2f; 
+        }
+        
+        .risk-medium { 
+            background: #fff3e0; 
+            color: #f57c00; 
+        }
+        
+        .risk-low { 
+            background: #e8f5e9; 
+            color: #388e3c; 
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 10px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.3s;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .btn:hover { 
+            background: #764ba2;
+        }
+        
+        .lock-icon {
+            font-size: 12px;
+            color: #d32f2f;
+            font-weight: bold;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+        
+        .empty-state h4 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        @media (max-width: 768px) {
+            .documents-grid { grid-template-columns: 1fr; }
+            .navbar { flex-direction: column; gap: 15px; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h2>🔒 PrivacyGuard – Protected Documents</h2>
+        <button onclick="logout()">Logout</button>
+    </div>
+
+    <div class="container">
+        <div class="main-content">
+            <h3>📄 Protected Documents</h3>
+            
+            <div class="info-banner">
+                👁️ You are viewing <strong>protected documents only</strong>. Original files are encrypted and only accessible to administrators with the security key.
+            </div>
+
+            <div class="documents-grid" id="documents-grid">
+                <div class="empty-state">
+                    <h4>⏳ Loading documents...</h4>
+                    <p>Please wait while we fetch your protected files.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function loadDocuments() {
+            fetch('/api/guest/documents')
+                .then(r => r.json())
+                .then(docs => {
+                    const grid = document.getElementById('documents-grid');
+                    grid.innerHTML = '';
+
+                    if (!Array.isArray(docs)) {
+                        grid.innerHTML = `
+                            <div class="empty-state" style="grid-column: 1/-1;">
+                                <h4>❌ Error Loading Documents</h4>
+                                <p>Please try logging in again.</p>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    if (docs.length === 0) {
+                        grid.innerHTML = `
+                            <div class="empty-state" style="grid-column: 1/-1;">
+                                <h4>📭 No Documents Available</h4>
+                                <p>No protected documents have been shared with you yet.</p>
+                                <p style="margin-top: 10px; font-size: 12px; color: #999;">
+                                    Ask an administrator to upload and share documents with you.
+                                </p>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    docs.forEach(doc => {
+                        const riskClass = `risk-${doc.risk_level.toLowerCase()}`;
+                        const card = `
+                            <div class="document-card">
+                                <h4>📄 ${doc.filename}</h4>
+                                
+                                <div class="document-info">
+                                    <p><strong>Type:</strong> ${doc.file_type}</p>
+                                    <p><strong>Uploaded:</strong> ${new Date(doc.uploaded_at).toLocaleDateString()}</p>
+                                </div>
+                                
+                                <span class="risk-badge ${riskClass}">⚠️ Risk: ${doc.risk_level}</span>
+                                
+                                <p style="margin-top: 12px; font-size: 11px; color: #999;">
+                                    <span class="lock-icon">🔐</span> Protected & Encrypted
+                                </p>
+                                
+                                <button class="btn" onclick="downloadDocument('${doc.id}', 'protected')">
+                                    ⬇️ Download Protected Version
+                                </button>
+                            </div>
+                        `;
+                        grid.innerHTML += card;
+                    });
+                })
+                .catch(err => {
+                    console.error('Error loading documents:', err);
+                    const grid = document.getElementById('documents-grid');
+                    grid.innerHTML = `
+                        <div class="empty-state" style="grid-column: 1/-1;">
+                            <h4>❌ Error Loading Documents</h4>
+                            <p>Failed to fetch documents: ${err.message}</p>
+                        </div>
+                    `;
+                });
+        }
+
+        function downloadDocument(docId, version) {
+            // This will be implemented in the next step
+            alert('Download functionality coming soon! Document ID: ' + docId);
+        }
+
+        function logout() {
+            fetch('/api/auth/logout', { method: 'POST' })
+                .then(() => {
+                    window.location.href = '/';
+                });
+        }
+
+        // Load documents when page loads
+        loadDocuments();
+    </script>
+</body>
+</html>
