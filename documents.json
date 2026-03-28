@@ -1,0 +1,57 @@
+{
+  "aac7dc32-75bd-4765-a46c-bcd5e1ad4e3d": {
+    "id": "aac7dc32-75bd-4765-a46c-bcd5e1ad4e3d",
+    "filename": "abc3.jpg",
+    "file_type": "image",
+    "uploaded_by": "abc@gmail.com",
+    "uploaded_at": "2026-03-28T17:35:01.926218",
+    "original_path": "uploads/abc3.jpg",
+    "protected_path": "uploads/abc3.jpg",
+    "threats": [],
+    "risk_level": "LOW"
+  },
+  "e3465699-0b54-486a-893d-13a18bae732b": {
+    "id": "e3465699-0b54-486a-893d-13a18bae732b",
+    "filename": "Web_Photo_Editor.jpg",
+    "file_type": "image",
+    "uploaded_by": "abc@gmail.com",
+    "uploaded_at": "2026-03-28T17:36:15.949890",
+    "original_path": "uploads/Web_Photo_Editor.jpg",
+    "protected_path": "uploads/Web_Photo_Editor.jpg",
+    "threats": [],
+    "risk_level": "LOW"
+  },
+  "61156f0d-d245-4760-a0a0-891595fa9a3b": {
+    "id": "61156f0d-d245-4760-a0a0-891595fa9a3b",
+    "filename": "ISHA_headshot.jpeg",
+    "file_type": "image",
+    "uploaded_by": "abc@gmail.com",
+    "uploaded_at": "2026-03-28T17:43:56.707569",
+    "original_path": "uploads/ISHA_headshot.jpeg",
+    "protected_path": "uploads/ISHA_headshot.jpeg",
+    "threats": [],
+    "risk_level": "LOW"
+  },
+  "9487daa6-d8d9-40a3-bcb3-8d90075fb9d1": {
+    "id": "9487daa6-d8d9-40a3-bcb3-8d90075fb9d1",
+    "filename": "img-408.jpg",
+    "file_type": "image",
+    "uploaded_by": "abc@gmail.com",
+    "uploaded_at": "2026-03-28T17:50:18.169262",
+    "original_path": "uploads/img-408.jpg",
+    "protected_path": "uploads/img-408.jpg",
+    "threats": [],
+    "risk_level": "LOW"
+  },
+  "2cb46f9b-18c1-4748-87b0-e8a332a849f1": {
+    "id": "2cb46f9b-18c1-4748-87b0-e8a332a849f1",
+    "filename": "age of learning_cover letter.docx",
+    "file_type": "docx",
+    "uploaded_by": "abc@gmail.com",
+    "uploaded_at": "2026-03-28T17:50:33.702075",
+    "original_path": "uploads/age of learning_cover letter.docx",
+    "protected_path": "uploads/age of learning_cover letter.docx",
+    "threats": [],
+    "risk_level": "LOW"
+  }
+}
