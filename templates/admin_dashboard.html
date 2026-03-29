@@ -480,20 +480,31 @@
             .then(r => r.json())
             .then(result => {
                 if (result.success) {
-                    statusEl.innerHTML = `
+                    let statusHTML = `
                         <p><strong>✅ Upload successful!</strong></p>
                         <p>Threats detected: ${result.threats_detected}</p>
                         <p>Risk level: <span class="risk-badge risk-${result.risk_level.toLowerCase()}">${result.risk_level}</span></p>
                     `;
+                    
+                    // Add blur options for images
+                    if (result.file_type === 'image') {
+                        statusHTML += `
+                            <p style="margin-top: 15px;"><strong>🎨 Blur this image?</strong></p>
+                            <button onclick="blurImage('${result.document_id}', 'blur')" style="background: #667eea; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-right: 10px;">Blur Image</button>
+                            <button onclick="blurImage('${result.document_id}', 'pixelate')" style="background: #764ba2; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Pixelate Image</button>
+                        `;
+                    }
+                    
+                    statusEl.innerHTML = statusHTML;
                     statusEl.className = 'upload-status success';
                     
                     // Clear input
                     document.getElementById('fileInput').value = '';
                     
-                    // Reload documents after 2 seconds
+                    // Reload documents after 3 seconds
                     setTimeout(() => {
                         showSection('documents');
-                    }, 2000);
+                    }, 3000);
                 } else {
                     statusEl.innerHTML = `<p><strong>❌ Error:</strong> ${result.error || 'Unknown error'}</p>`;
                     statusEl.className = 'upload-status error';
@@ -512,6 +523,42 @@
                     localStorage.removeItem('admin-email');
                     window.location.href = '/';
                 });
+        }
+
+        function blurImage(docId, blurType) {
+            const statusEl = document.getElementById('upload-status');
+            statusEl.innerHTML = `<p>⏳ Applying ${blurType === 'blur' ? 'blur' : 'pixelation'}...</p>`;
+            statusEl.className = 'upload-status success';
+
+            fetch(`/api/admin/blur-image/${docId}/${blurType}`, {
+                method: 'POST'
+            })
+            .then(response => {
+                if (response.ok) {
+                    // Download the blurred image
+                    response.blob().then(blob => {
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `${blurType}_image.jpg`;
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        document.body.removeChild(a);
+                        
+                        statusEl.innerHTML = `<p><strong>✅ ${blurType === 'blur' ? 'Blurred' : 'Pixelated'} image downloaded!</strong></p>`;
+                    });
+                } else {
+                    return response.json().then(err => {
+                        throw new Error(err.error || 'Failed to blur image');
+                    });
+                }
+            })
+            .catch(err => {
+                console.error('Blur error:', err);
+                statusEl.innerHTML = `<p><strong>❌ Error:</strong> ${err.message}</p>`;
+                statusEl.className = 'upload-status error';
+            });
         }
 
         // Load documents on page load

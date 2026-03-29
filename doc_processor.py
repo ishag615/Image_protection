@@ -2,6 +2,11 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFilter
 import io
 import re
+try:
+    from pptx import Presentation
+    PPTX_AVAILABLE = True
+except ImportError:
+    PPTX_AVAILABLE = False
 
 class DocumentProcessor:
     """Handle multiple document formats and image processing"""
@@ -90,8 +95,11 @@ class DocumentProcessor:
         
         elif file_type == 'powerpoint':
             # Extract images from PPTX
+            if not PPTX_AVAILABLE:
+                print("python-pptx not available, skipping PowerPoint processing")
+                return [filepath]
+            
             try:
-                from pptx import Presentation
                 prs = Presentation(filepath)
                 image_paths = []
                 

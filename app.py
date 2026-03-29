@@ -8,6 +8,9 @@ import json
 from datetime import datetime
 import uuid
 import secrets
+import base64
+from document_processor import DocumentProcessor
+from pii_redactor import PIIRedactor
 
 app = Flask(__name__)
 
@@ -16,8 +19,14 @@ app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SECRET_KEY'] = 'your-secret-key-change-this-in-production'
 Session(app)
 
-# Initialize APIs
-genai.configure(api_key=os.getenv('GOOGLE_API_KEY', 'your-gemini-key-here'))
+# Initialize Gemini API
+GEMINI_API_KEY = os.getenv('GOOGLE_API_KEY', '')
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+
+# Initialize document processor
+doc_processor = DocumentProcessor()
+redactor = PIIRedactor()
 
 # Database file paths
 DOCUMENTS_DB = 'documents.json'
@@ -102,6 +111,243 @@ def update_document_count(email):
     if email in keys:
         keys[email]['documents_count'] += 1
         save_key_vault(keys)
+
+# ============================================
+# GEMINI AI FUNCTIONS
+# ============================================
+
+def analyze_with_gemini(image_path):
+    """Use Gemini Vision to detect PII in images - Enhanced detection"""
+    
+    try:
+        with open(image_path, 'rb') as f:
+            image_data = base64.standard_b64encode(f.read()).decode('utf-8')
+        
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        prompt = """CRITICAL: You are an advanced PII/Sensitive Data Detection System. Your job is to identify EVERY piece of sensitive information visible in this image.
+
+DETECTION RULES - BE EXHAUSTIVE:
+
+1. FACIAL AND BIOMETRIC DATA *** HIGHEST PRIORITY ***
+   - ANY human face visible (detect ALL faces, even partially visible)
+   - Eyes, iris patterns, facial features that could identify a person
+   - Fingerprints or other biometric markers
+   - Silhouettes or shadows of faces
+   - If you see a face, ALWAYS report it as HIGH risk
+
+2. DOCUMENT NUMBERS AND IDENTIFIERS *** HIGHEST PRIORITY ***
+   - Passport numbers (any alphanumeric passport ID)
+   - Driver's license numbers
+   - National ID numbers (from any country)
+   - Visa/Travel document numbers
+   - Social Security numbers (SSN format: XXX-XX-XXXX)
+   - License plate numbers on vehicles
+   - Barcode or QR code numbers that could identify documents
+   - Registration numbers
+   - Certificate numbers
+   - Any 9-digit or ID-looking number groups
+
+3. PERSONAL IDENTITY INFORMATION *** VERY HIGH RISK ***
+   - Full names or surnames of people
+   - Date of birth (any format: DD/MM/YYYY, MM/DD/YY, etc.)
+   - Place of birth or origin
+   - Gender or demographic markers tied to identity
+   - Signature or handwriting of individuals
+   - Religious or cultural symbols that could identify someone
+   - Parent/family member names
+   - Maiden names
+
+4. CONTACT INFORMATION *** HIGH RISK ***
+   - Phone numbers (any format with area codes)
+   - Email addresses
+   - Home addresses (street address + number)
+   - Zip/postal codes when with other identifying info
+   - Fax numbers
+   - Website URLs that identify individuals
+   - Apartment/unit numbers with building info
+
+5. FINANCIAL AND PAYMENT DATA *** VERY HIGH RISK ***
+   - Credit card numbers (visible digits)
+   - Debit card numbers
+   - Bank account numbers (any format)
+   - Sort codes or routing numbers
+   - IBAN numbers
+   - Card expiration dates
+   - CVV/CVC security codes (3-4 digit codes)
+   - Card holder names
+   - Bank names with account numbers
+   - Wire transfer information
+   - Cryptocurrency addresses
+
+6. MEDICAL AND HEALTH DATA *** HIGH RISK ***
+   - Health insurance numbers or policy numbers
+   - Medical record numbers
+   - Medicare/Medicaid numbers
+   - Patient ID numbers
+   - Hospital or clinic names with patient context
+   - Prescription information
+   - Medical test results
+   - Medication names with patient names
+   - Blood type or allergies documented
+   - Organ donor status
+
+7. GOVERNMENT AND LEGAL IDENTIFIERS *** HIGH RISK ***
+   - Tax IDs or TINs
+   - Voter registration numbers
+   - Military service numbers
+   - Court case numbers
+   - Prison/inmate numbers
+   - Driving record information
+   - Criminal record numbers
+
+8. DIGITAL IDENTIFIERS AND CREDENTIALS *** HIGH RISK ***
+   - Passwords (any visible text that looks like a password)
+   - Private/SSH keys
+   - API keys or tokens
+   - OAuth tokens or credentials
+   - Two-factor authentication codes
+   - Security PIN codes
+   - Usernames with context suggesting authentication
+
+9. COMPANY AND EMPLOYMENT DATA *** MEDIUM RISK ***
+   - Employee IDs
+   - Company confidential information
+   - Salary information
+   - Staff directory information
+   - Internal reference numbers
+   - Work-related certifications tied to individuals
+
+ANALYSIS REQUIREMENTS:
+
+For EVERY sensitive item found, provide in EXACTLY this format:
+---
+TYPE: [Specific type of data]
+LOCATION: [Detailed location: "Top-left corner", "Center of page", "Bottom-right", etc.]
+DETAILS: [What exactly you see, e.g., "Passport number A12345678", "Phone: 555-1234"]
+RISK: [High/Medium]
+---
+
+CRITICAL INSTRUCTIONS:
+1. If you see ANY human face - ALWAYS report as "TYPE: Human Face" with RISK: High
+2. If you see numbers that look like IDs - Report them
+3. If you see text that could be sensitive - Report it
+4. Erase when in doubt - False positives are GOOD, false negatives are BAD
+5. Multiple findings: List each separately with the format above
+6. Be AGGRESSIVE in detection - Assume the worst case
+7. If ABSOLUTELY NOTHING sensitive found in the image, respond with ONLY: "NO_SENSITIVE_DATA_FOUND"
+
+Example responses:
+---
+TYPE: Human Face / Portrait
+LOCATION: Center of image, person looking at camera
+DETAILS: Clear facial features visible
+RISK: High
+---
+
+---
+TYPE: Passport Number
+LOCATION: Top-left corner of page
+DETAILS: Number visible: "A24534789"
+RISK: High
+---
+
+---
+TYPE: Email Address
+LOCATION: Bottom of page
+DETAILS: "john.smith@company.com"
+RISK: High
+---
+
+---
+TYPE: Phone Number
+LOCATION: Right side, phone contact section
+DETAILS: Format appears to be international: +1-555-123-4567
+RISK: High
+---"""
+
+        response = model.generate_content([
+            prompt,
+            {
+                'mime_type': 'image/jpeg',
+                'data': image_data
+            }
+        ])
+        
+        return parse_gemini_response(response.text)
+    
+    except Exception as e:
+        print(f"Gemini error: {e}")
+        return {
+            'threats': [],
+            'raw_analysis': f"Error analyzing image: {str(e)}",
+            'risk_level': 'UNKNOWN'
+        }
+
+def parse_gemini_response(response_text):
+    """Parse Gemini response into structured format"""
+    
+    if "NO_SENSITIVE_DATA_FOUND" in response_text or "NO_PII_FOUND" in response_text:
+        return {
+            'threats': [],
+            'raw_analysis': response_text,
+            'risk_level': 'LOW'
+        }
+    
+    # Parse threats from response - new format with DETAILS field
+    threats = []
+    lines = response_text.split('\n')
+    
+    current_threat = {}
+    for line in lines:
+        line = line.strip()
+        if not line or line == '---':
+            if current_threat and 'type' in current_threat:
+                threats.append(current_threat)
+                current_threat = {}
+            continue
+            
+        if line.startswith('TYPE:'):
+            if current_threat and 'type' in current_threat:
+                threats.append(current_threat)
+            current_threat = {'type': line.replace('TYPE:', '').strip()}
+        elif line.startswith('LOCATION:'):
+            current_threat['location'] = line.replace('LOCATION:', '').strip()
+        elif line.startswith('DETAILS:'):
+            current_threat['details'] = line.replace('DETAILS:', '').strip()
+        elif line.startswith('RISK:'):
+            risk_text = line.replace('RISK:', '').strip().lower()
+            current_threat['risk'] = 'High' if 'high' in risk_text else 'Medium'
+    
+    if current_threat and 'type' in current_threat:
+        threats.append(current_threat)
+    
+    # Determine overall risk - be strict
+    if not threats:
+        overall_risk = 'LOW'
+    else:
+        risk_levels = [t.get('risk', 'Medium').lower() for t in threats]
+        
+        # If ANY high risk found, mark as HIGH
+        if any('high' in r for r in risk_levels):
+            overall_risk = 'HIGH'
+        # If any medium found, mark as MEDIUM
+        elif any('medium' in r for r in risk_levels):
+            overall_risk = 'MEDIUM'
+        # Only LOW if absolutely nothing concerning
+        else:
+            overall_risk = 'LOW'
+    
+    return {
+        'threats': [{
+            'type': t.get('type', 'Unknown'),
+            'location': t.get('location', 'Unknown location'),
+            'details': t.get('details', ''),
+            'risk': t.get('risk', 'Medium')
+        } for t in threats],
+        'raw_analysis': response_text,
+        'risk_level': overall_risk
+    }
 
 # ============================================
 # ROUTES - AUTHENTICATION
@@ -208,6 +454,103 @@ def get_admin_documents():
     
     return jsonify(admin_docs)
 
+@app.route('/api/admin/upload', methods=['POST'])
+def admin_upload():
+    """Admin upload document - scan with Gemini and create protected version"""
+    if session.get('user_type') != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+    
+    file = request.files['file']
+    email = session.get('email')
+    
+    # Save temporarily
+    temp_path = f'uploads/{file.filename}'
+    Path('uploads').mkdir(exist_ok=True)
+    file.save(temp_path)
+    
+    try:
+        # Determine file type
+        file_type = doc_processor.get_file_type(temp_path)
+        
+        # Convert to images if needed
+        images_to_analyze = doc_processor.convert_to_images(temp_path, file_type)
+        
+        # Analyze all images with Gemini
+        all_threats = []
+        
+        for img_path in images_to_analyze:
+            analysis = analyze_with_gemini(img_path)
+            all_threats.extend(analysis['threats'])
+        
+        # Determine overall risk - be strict
+        if not all_threats:
+            overall_risk = 'LOW'
+        else:
+            risk_levels = [t.get('risk', 'Medium').lower() for t in all_threats]
+            
+            # If ANY high risk found, mark as HIGH
+            if any('high' in r for r in risk_levels):
+                overall_risk = 'HIGH'
+            # If any medium found, mark as MEDIUM
+            elif any('medium' in r for r in risk_levels):
+                overall_risk = 'MEDIUM'
+            # Only LOW if absolutely nothing concerning
+            else:
+                overall_risk = 'LOW'
+        
+        # ========== CREATE PROTECTED VERSION ==========
+        Path('protected_documents').mkdir(exist_ok=True)
+        
+        protected_filename = f"protected_{uuid.uuid4()}_{Path(file.filename).stem}.{Path(file.filename).suffix.lstrip('.')}"
+        protected_path = f'protected_documents/{protected_filename}'
+        
+        # Generate protected version based on file type
+        if file_type == 'image':
+            # For images, redact sensitive areas
+            redactor.redact_image_from_threats(temp_path, all_threats, protected_path)
+            
+        else:
+            # For PDFs and Word docs, redact the document
+            redactor.create_protected_document(temp_path, all_threats, protected_path, file_type)
+        
+        # Create document record
+        doc_id = str(uuid.uuid4())
+        documents = load_documents()
+        
+        documents[doc_id] = {
+            'id': doc_id,
+            'filename': file.filename,
+            'file_type': file_type,
+            'uploaded_by': email,
+            'uploaded_at': datetime.now().isoformat(),
+            'original_path': temp_path,
+            'protected_path': protected_path,
+            'threats': all_threats,
+            'risk_level': overall_risk,
+            'threats_count': len(all_threats)
+        }
+        
+        save_documents(documents)
+        update_document_count(email)
+        
+        return jsonify({
+            'success': True,
+            'document_id': doc_id,
+            'threats_detected': len(all_threats),
+            'risk_level': overall_risk,
+            'file_type': file_type,
+            'message': f'Protected version created. {len(all_threats)} sensitive items detected and redacted.'
+        })
+    
+    except Exception as e:
+        print(f"Upload error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/admin/audit-log')
 def audit_log():
     """Get audit log for admin"""
@@ -226,6 +569,96 @@ def audit_log():
         'documents_managed': admin_info['documents_count'],
         'account_created': admin_info['created']
     })
+
+@app.route('/api/admin/document/<doc_id>', methods=['GET'])
+def get_admin_document(doc_id):
+    """Get document details"""
+    if session.get('user_type') != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    documents = load_documents()
+    if doc_id not in documents:
+        return jsonify({'error': 'Document not found'}), 404
+    
+    doc = documents[doc_id]
+    return jsonify({
+        'id': doc_id,
+        'filename': doc['filename'],
+        'file_type': doc['file_type'],
+        'uploaded_at': doc['uploaded_at'],
+        'threats_count': len(doc.get('threats', [])),
+        'risk_level': doc.get('risk_level', 'LOW'),
+        'threats': doc.get('threats', [])
+    })
+
+@app.route('/api/admin/download/<doc_id>/<version>')
+def admin_download(doc_id, version):
+    """
+    Download document (original or protected)
+    version: 'original' or 'protected'
+    """
+    if session.get('user_type') != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    documents = load_documents()
+    if doc_id not in documents:
+        return jsonify({'error': 'Document not found'}), 404
+    
+    doc = documents[doc_id]
+    
+    if version == 'original':
+        filepath = doc['original_path']
+    elif version == 'protected':
+        filepath = doc['protected_path']
+    else:
+        return jsonify({'error': 'Invalid version'}), 400
+    
+    if not Path(filepath).exists():
+        return jsonify({'error': 'File not found on server'}), 404
+    
+    filename = f"{version}_{doc['filename']}"
+    return send_file(filepath, as_attachment=True, download_name=filename)
+
+@app.route('/api/admin/blur-image/<doc_id>/<blur_type>', methods=['POST'])
+def blur_image(doc_id, blur_type):
+    """
+    Apply blur or pixelation effect to image
+    blur_type: 'blur' or 'pixelate'
+    """
+    if session.get('user_type') != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    documents = load_documents()
+    if doc_id not in documents:
+        return jsonify({'error': 'Document not found'}), 404
+    
+    doc = documents[doc_id]
+    
+    # Only apply to images
+    if doc['file_type'] != 'image':
+        return jsonify({'error': 'Can only blur image files'}), 400
+    
+    try:
+        # Create blurred version
+        original_path = doc['original_path']
+        
+        Path('blur_versions').mkdir(exist_ok=True)
+        blurred_filename = f"blurred_{blur_type}_{uuid.uuid4()}_{Path(doc['filename']).stem}.{Path(doc['filename']).suffix.lstrip('.')}"
+        blurred_path = f'blur_versions/{blurred_filename}'
+        
+        if blur_type == 'blur':
+            blurred_path = redactor.blur_image_simple(original_path, blurred_path, blur_strength=51)
+        elif blur_type == 'pixelate':
+            blurred_path = redactor.pixelate_image(original_path, blurred_path, pixel_size=20)
+        else:
+            return jsonify({'error': 'Invalid blur type'}), 400
+        
+        return send_file(blurred_path, as_attachment=True, 
+                        download_name=f"{blur_type}_{doc['filename']}")
+    
+    except Exception as e:
+        print(f"Blur error: {e}")
+        return jsonify({'error': str(e)}), 500
 
 # ============================================
 # ROUTES - GUEST VIEW
@@ -259,6 +692,27 @@ def get_guest_documents():
     
     return jsonify(guest_docs)
 
+@app.route('/api/guest/download/<doc_id>')
+def guest_download(doc_id):
+    """
+    Download protected document (guest can only access protected version)
+    """
+    if session.get('user_type') != 'guest':
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    documents = load_documents()
+    if doc_id not in documents:
+        return jsonify({'error': 'Document not found'}), 404
+    
+    doc = documents[doc_id]
+    filepath = doc['protected_path']
+    
+    if not Path(filepath).exists():
+        return jsonify({'error': 'File not found on server'}), 404
+    
+    filename = f"protected_{doc['filename']}"
+    return send_file(filepath, as_attachment=True, download_name=filename)
+
 # ============================================
 # ERROR HANDLERS
 # ============================================
@@ -278,6 +732,6 @@ def server_error(e):
 if __name__ == '__main__':
     # Create necessary folders
     Path('uploads').mkdir(exist_ok=True)
-    Path('protected_vault').mkdir(exist_ok=True)
+    Path('protected_documents').mkdir(exist_ok=True)
     
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5001)

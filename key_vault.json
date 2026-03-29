@@ -14,5 +14,13 @@
     "active": true,
     "last_used": "2026-03-28T13:49:49.110726",
     "documents_count": 0
+  },
+  "abc@gmail.com": {
+    "key": "59e77e30841a04052ece08eb60f753df",
+    "email": "abc@gmail.com",
+    "created": "2026-03-28T17:34:04.684532",
+    "active": true,
+    "last_used": "2026-03-28T17:59:11.515989",
+    "documents_count": 6
   }
 }
