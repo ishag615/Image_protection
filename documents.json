@@ -65,5 +65,17 @@
     "threats": [],
     "risk_level": "LOW",
     "threats_count": 0
+  },
+  "a2e54453-95aa-418f-ba5b-46efeed42fdf": {
+    "id": "a2e54453-95aa-418f-ba5b-46efeed42fdf",
+    "filename": "abc4.jpg",
+    "file_type": "image",
+    "uploaded_by": "abc@gmail.com",
+    "uploaded_at": "2026-03-29T10:15:47.230227",
+    "original_path": "uploads/abc4.jpg",
+    "protected_path": "protected_documents/protected_3af799b3-3a1e-4201-aee7-c7b22a61841e_abc4.jpg",
+    "threats": [],
+    "risk_level": "LOW",
+    "threats_count": 0
   }
 }
