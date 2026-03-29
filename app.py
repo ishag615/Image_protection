@@ -541,6 +541,7 @@ def admin_upload():
             'document_id': doc_id,
             'threats_detected': len(all_threats),
             'risk_level': overall_risk,
+            'file_type': file_type,
             'message': f'Protected version created. {len(all_threats)} sensitive items detected and redacted.'
         })
     
@@ -617,6 +618,47 @@ def admin_download(doc_id, version):
     
     filename = f"{version}_{doc['filename']}"
     return send_file(filepath, as_attachment=True, download_name=filename)
+
+@app.route('/api/admin/blur-image/<doc_id>/<blur_type>', methods=['POST'])
+def blur_image(doc_id, blur_type):
+    """
+    Apply blur or pixelation effect to image
+    blur_type: 'blur' or 'pixelate'
+    """
+    if session.get('user_type') != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    documents = load_documents()
+    if doc_id not in documents:
+        return jsonify({'error': 'Document not found'}), 404
+    
+    doc = documents[doc_id]
+    
+    # Only apply to images
+    if doc['file_type'] != 'image':
+        return jsonify({'error': 'Can only blur image files'}), 400
+    
+    try:
+        # Create blurred version
+        original_path = doc['original_path']
+        
+        Path('blur_versions').mkdir(exist_ok=True)
+        blurred_filename = f"blurred_{blur_type}_{uuid.uuid4()}_{Path(doc['filename']).stem}.{Path(doc['filename']).suffix.lstrip('.')}"
+        blurred_path = f'blur_versions/{blurred_filename}'
+        
+        if blur_type == 'blur':
+            blurred_path = redactor.blur_image_simple(original_path, blurred_path, blur_strength=51)
+        elif blur_type == 'pixelate':
+            blurred_path = redactor.pixelate_image(original_path, blurred_path, pixel_size=20)
+        else:
+            return jsonify({'error': 'Invalid blur type'}), 400
+        
+        return send_file(blurred_path, as_attachment=True, 
+                        download_name=f"{blur_type}_{doc['filename']}")
+    
+    except Exception as e:
+        print(f"Blur error: {e}")
+        return jsonify({'error': str(e)}), 500
 
 # ============================================
 # ROUTES - GUEST VIEW

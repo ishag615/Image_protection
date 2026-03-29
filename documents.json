@@ -53,5 +53,17 @@
     "protected_path": "uploads/age of learning_cover letter.docx",
     "threats": [],
     "risk_level": "LOW"
+  },
+  "46dc17e3-ea60-40ab-ba69-175217fbb751": {
+    "id": "46dc17e3-ea60-40ab-ba69-175217fbb751",
+    "filename": "IMG_1037.JPG",
+    "file_type": "image",
+    "uploaded_by": "abc@gmail.com",
+    "uploaded_at": "2026-03-28T17:59:25.094723",
+    "original_path": "uploads/IMG_1037.JPG",
+    "protected_path": "protected_documents/protected_d9226ca3-7c57-4ab6-b1d7-c5212b3cc747_IMG_1037.JPG",
+    "threats": [],
+    "risk_level": "LOW",
+    "threats_count": 0
   }
 }

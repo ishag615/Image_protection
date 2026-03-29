@@ -267,3 +267,76 @@ class PIIRedactor:
         
         blended = cv2.addWeighted(original, 1 - alpha, redacted, alpha, 0)
         return blended
+    
+    def blur_image_simple(self, image_path: str, output_path: str, blur_strength: int = 51) -> str:
+        """
+        Apply simple uniform blur to entire image (for privacy/obfuscation)
+        
+        Args:
+            image_path: Path to original image
+            output_path: Path to save blurred image
+            blur_strength: Kernel size for blur (higher = more blur)
+            
+        Returns:
+            Path to blurred image
+        """
+        try:
+            img = Image.open(image_path).convert('RGB')
+            img_array = np.array(img)
+            
+            # Convert to OpenCV format (BGR)
+            img_cv = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
+            
+            # Apply Gaussian blur
+            kernel_size = blur_strength if blur_strength % 2 == 1 else blur_strength + 1
+            blurred = cv2.GaussianBlur(img_cv, (kernel_size, kernel_size), 0)
+            
+            # Also apply median blur for stronger effect
+            blurred = cv2.medianBlur(blurred, kernel_size)
+            
+            # Convert back to PIL and save
+            img_rgb = cv2.cvtColor(blurred, cv2.COLOR_BGR2RGB)
+            protected_img = Image.fromarray(img_rgb)
+            protected_img.save(output_path, quality=95)
+            
+            return output_path
+            
+        except Exception as e:
+            print(f"Error blurring image: {e}")
+            return image_path
+    
+    def pixelate_image(self, image_path: str, output_path: str, pixel_size: int = 20) -> str:
+        """
+        Apply pixelation effect to entire image
+        
+        Args:
+            image_path: Path to original image
+            output_path: Path to save pixelated image
+            pixel_size: Size of pixels (higher = more pixelation)
+            
+        Returns:
+            Path to pixelated image
+        """
+        try:
+            img = Image.open(image_path).convert('RGB')
+            img_array = np.array(img)
+            
+            # Convert to OpenCV format
+            img_cv = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
+            
+            h, w = img_cv.shape[:2]
+            
+            # Resize down then back up to create pixelation
+            temp = cv2.resize(img_cv, (w // pixel_size, h // pixel_size), interpolation=cv2.INTER_LINEAR)
+            pixelated = cv2.resize(temp, (w, h), interpolation=cv2.INTER_NEAREST)
+            
+            # Convert back to PIL and save
+            img_rgb = cv2.cvtColor(pixelated, cv2.COLOR_BGR2RGB)
+            protected_img = Image.fromarray(img_rgb)
+            protected_img.save(output_path, quality=95)
+            
+            return output_path
+            
+        except Exception as e:
+            print(f"Error pixelating image: {e}")
+            return image_path
