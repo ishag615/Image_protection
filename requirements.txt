@@ -1,8 +1,28 @@
 flask==2.3.0
-   flask-session==0.5.0
-   google-generativeai==0.3.0
-   boto3==1.28.0
+flask-session==0.5.0
+google-generativeai==0.3.0
+boto3==1.28.0
 pillow==11.0.0
-   pdf2image==1.16.2
+pdf2image==1.16.2
 python-pptx==0.6.23
+opencv-python==4.8.0
+python-docx==0.8.11
+PyPDF2==3.0.1
+cryptography==41.0.0
+
+# NEW: Presidio for enhanced PII detection
+presidio-analyzer==2.2.35
+presidio-anonymizer==2.2.35
+
+# NEW: Tesseract OCR for text extraction
+pytesseract==0.3.10
+
+# NEW: Format-Preserving Encryption
+pyffx==0.4.4
+
+# NEW: PDF and reporting
+reportlab==4.0.7
+
+# NEW: Data validation and typing
+pydantic==2.5.0
 
