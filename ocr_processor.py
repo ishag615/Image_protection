@@ -3,7 +3,15 @@ Enhanced OCR and Text Extraction
 Handles text extraction from multiple document formats using Tesseract and document libraries
 """
 
-import pytesseract
+try:
+    import pytesseract
+except ImportError as e:
+    raise ImportError(
+        "pytesseract is required for OCR. "
+        "Install with `pip install pytesseract` and ensure Tesseract OCR engine is installed on your system. "
+        f"Original error: {e}"
+    )
+
 from PIL import Image
 import cv2
 import numpy as np

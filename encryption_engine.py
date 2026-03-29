@@ -4,7 +4,16 @@ Supports Format-Preserving Encryption (FPE) and Full Field Encryption
 """
 
 from cryptography.fernet import Fernet, InvalidToken
-import pyffx
+
+try:
+    import pyffx
+except ImportError as e:
+    raise ImportError(
+        "pyffx is required for format-preserving encryption. "
+        "Install with `pip install pyffx` and ensure your environment python path is set correctly." 
+        f" Original error: {e}"
+    )
+
 import os
 import base64
 import logging
@@ -65,8 +74,8 @@ class EncryptionEngine:
     def _create_fpe_numeric(self) -> Any:
         """Create FPE engine for numeric-only data (SSN, phone, etc.)"""
         try:
-            key = self.master_key[:16]  # Use first 16 chars of master key
-            return pyffx.Integer(key, max_value=9999999999999999)
+            key = self.master_key[:16].encode('utf-8')
+            return pyffx.Integer(key, length=16)
         except Exception as e:
             logger.warning(f"Could not create numeric FPE: {e}")
             return None
@@ -74,9 +83,9 @@ class EncryptionEngine:
     def _create_fpe_alphanumeric(self) -> Any:
         """Create FPE engine for alphanumeric data"""
         try:
-            key = self.master_key[:16]
+            key = self.master_key[:16].encode('utf-8')
             alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
-            return pyffx.String(key, alphabet=alphabet)
+            return pyffx.String(key, alphabet=alphabet, length=64)
         except Exception as e:
             logger.warning(f"Could not create alphanumeric FPE: {e}")
             return None
@@ -84,10 +93,9 @@ class EncryptionEngine:
     def _create_fpe_email(self) -> Any:
         """Create FPE engine for email addresses"""
         try:
-            key = self.master_key[:16]
-            # Email-safe alphabet
+            key = self.master_key[:16].encode('utf-8')
             alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz._-'
-            return pyffx.String(key, alphabet=alphabet)
+            return pyffx.String(key, alphabet=alphabet, length=128)
         except Exception as e:
             logger.warning(f"Could not create email FPE: {e}")
             return None
@@ -95,8 +103,8 @@ class EncryptionEngine:
     def _create_fpe_credit_card(self) -> Any:
         """Create FPE engine for credit card numbers"""
         try:
-            key = self.master_key[:16]
-            return pyffx.Integer(key, max_value=9999999999999999)
+            key = self.master_key[:16].encode('utf-8')
+            return pyffx.Integer(key, length=16)
         except Exception as e:
             logger.warning(f"Could not create credit card FPE: {e}")
             return None
