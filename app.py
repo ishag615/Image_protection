@@ -1,10 +1,11 @@
 """
-Image Protection System - Production-Grade Flask Application
-Implements Presidio-based PII detection with user-controlled safeguarding
+Image Protection System - Simplified Flask Application
+Uses Gemini Vision AI for PII detection and blur-based redaction
 """
 
-from flask import Flask, render_template, request, jsonify, session, redirect, send_file, Response
+from flask import Flask, render_template, request, jsonify, session, redirect, send_file
 from flask_session import Session
+import google.generativeai as genai
 from pathlib import Path
 import os
 import json
@@ -13,15 +14,9 @@ import uuid
 import secrets
 import base64
 import logging
-import traceback
 
-# Import new analysis and safeguarding modules
-from pii_detector import PresidioAnalyzer
-from ocr_processor import OCRProcessor
-from report_generator import ReportGenerator
-from encryption_engine import EncryptionEngine
-from pii_redactor import PIIRedactor
 from document_processor import DocumentProcessor
+from pii_redactor import PIIRedactor
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -41,23 +36,22 @@ Session(app)
 # CORE SYSTEM INITIALIZATION
 # ============================================
 
-# Initialize analysis and processing engines
-pii_analyzer = PresidioAnalyzer()
-ocr_processor = OCRProcessor()
-report_generator = ReportGenerator()
-encryption_engine = EncryptionEngine()
-redactor = PIIRedactor(encryption_engine)
+# Initialize Gemini API
+GEMINI_API_KEY = os.getenv('GOOGLE_API_KEY', '')
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+
+# Initialize processors and redactor
 doc_processor = DocumentProcessor()
+redactor = PIIRedactor()
 
 # Database and storage paths
 DOCUMENTS_DB = 'documents.json'
-ANALYSIS_DB = 'analysis_reports.json'
 KEY_VAULT = 'key_vault.json'
 
-
+# Create necessary directories
 Path('uploads').mkdir(exist_ok=True)
 Path('protected_documents').mkdir(exist_ok=True)
-Path('reports').mkdir(exist_ok=True)
 Path('flask_session').mkdir(exist_ok=True)
 
 # ============================================
@@ -76,18 +70,6 @@ def save_documents(docs):
     with open(DOCUMENTS_DB, 'w') as f:
         json.dump(docs, f, indent=2)
 
-def load_analysis_reports():
-    """Load analysis reports database"""
-    if Path(ANALYSIS_DB).exists():
-        with open(ANALYSIS_DB, 'r') as f:
-            return json.load(f)
-    return {}
-
-def save_analysis_reports(reports):
-    """Save analysis reports database"""
-    with open(ANALYSIS_DB, 'w') as f:
-        json.dump(reports, f, indent=2)
-
 def load_key_vault():
     """Load admin keys"""
     if Path(KEY_VAULT).exists():
@@ -99,6 +81,110 @@ def save_key_vault(keys):
     """Save admin keys"""
     with open(KEY_VAULT, 'w') as f:
         json.dump(keys, f, indent=2)
+
+# ============================================
+# AI ANALYSIS FUNCTIONS
+# ============================================
+
+def analyze_with_gemini(image_path):
+    """Use Gemini Vision to detect PII in images"""
+    try:
+        if not GEMINI_API_KEY:
+            return {'success': False, 'error': 'Gemini API key not configured'}
+        
+        with open(image_path, 'rb') as f:
+            image_data = base64.standard_b64encode(f.read()).decode('utf-8')
+        
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        prompt = """You are a PII/Sensitive Data Detection System. Identify ALL sensitive information visible in this image.
+
+DETECTION CATEGORIES:
+
+1. FACIAL AND BIOMETRIC DATA (HIGHEST PRIORITY)
+   - Human faces (detect ALL faces, even partially visible)
+   - Eyes, facial features, fingerprints
+   
+2. DOCUMENT NUMBERS (HIGHEST PRIORITY)
+   - Passport, driver's license, ID numbers
+   - Social Security numbers, license plates
+   - Barcode or document numbers
+
+3. PERSONAL IDENTITY
+   - Full names, surnames, dates of birth
+   - Place of birth, signatures, handwriting
+
+4. CONTACT INFORMATION
+   - Phone numbers, email addresses
+   - Home addresses, zip codes
+
+5. FINANCIAL DATA (VERY HIGH RISK)
+   - Credit/debit card numbers
+   - Bank account numbers, routing numbers
+   - Card holder names, CVV codes
+
+6. MEDICAL INFORMATION
+   - Health insurance numbers
+   - Medical record numbers, prescriptions
+
+7. GOVERNMENT IDENTIFIERS
+   - Tax IDs, voter registration, military numbers
+   - Court case numbers, prison numbers
+
+For each item found, provide:
+TYPE: [category name]
+LOCATION: [describe location in image]
+RISK: [HIGH/MEDIUM/LOW]
+DETAILS: [brief description]
+
+Be EXHAUSTIVE and err on the side of caution."""
+        
+        response = model.generate_content([
+            {"mime_type": "image/jpeg", "data": image_data},
+            prompt
+        ])
+        
+        analysis_text = response.text
+        
+        # Parse detected entities
+        entities = []
+        lines = analysis_text.split('\n')
+        
+        current_entity = {}
+        for line in lines:
+            if line.startswith('TYPE:'):
+                if current_entity:
+                    entities.append(current_entity)
+                current_entity = {'type': line.replace('TYPE:', '').strip()}
+            elif line.startswith('LOCATION:'):
+                current_entity['location'] = line.replace('LOCATION:', '').strip()
+            elif line.startswith('RISK:'):
+                current_entity['risk'] = line.replace('RISK:', '').strip()
+            elif line.startswith('DETAILS:'):
+                current_entity['details'] = line.replace('DETAILS:', '').strip()
+        
+        if current_entity:
+            entities.append(current_entity)
+        
+        # Determine overall risk level
+        risk_levels = [e.get('risk', 'LOW') for e in entities]
+        if 'HIGH' in risk_levels:
+            risk_level = 'HIGH'
+        elif 'MEDIUM' in risk_levels:
+            risk_level = 'MEDIUM'
+        else:
+            risk_level = 'LOW'
+        
+        return {
+            'success': True,
+            'entities': entities,
+            'risk_level': risk_level,
+            'analysis': analysis_text
+        }
+    
+    except Exception as e:
+        logger.error(f"Gemini analysis error: {e}")
+        return {'success': False, 'error': str(e)}
 
 # ============================================
 # AUTHENTICATION FUNCTIONS  
@@ -177,6 +263,11 @@ def register():
         logger.error(f"Registration error: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/auth/admin-register', methods=['POST'])
+def admin_register():
+    """Admin registration (alias for register)"""
+    return register()
+
 @app.route('/api/auth/login', methods=['POST'])
 def login():
     """Admin login with key"""
@@ -201,6 +292,25 @@ def login():
         logger.error(f"Login error: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/auth/admin-login', methods=['POST'])
+def admin_login():
+    """Admin login (alias for login)"""
+    return login()
+
+@app.route('/api/auth/guest-login', methods=['POST'])
+def guest_login():
+    """Guest access (no credentials required)"""
+    try:
+        session['user_type'] = 'guest'
+        session['email'] = 'guest'
+        return jsonify({
+            'success': True,
+            'redirect': '/guest-view'
+        })
+    except Exception as e:
+        logger.error(f"Guest login error: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/auth/logout',  methods=['POST'])
 def logout():
     """Logout"""
@@ -216,9 +326,17 @@ def dashboard():
     """Admin dashboard"""
     if session.get('user_type') != 'admin':
         return redirect('/')
-    return render_template('dashboard.html')
+    return render_template('admin_dashboard.html')
+
+@app.route('/guest-view')
+def guest_view():
+    """Guest view of protected documents"""
+    if session.get('user_type') != 'guest':
+        return redirect('/')
+    return render_template('guest_view.html')
 
 @app.route('/api/documents')
+@app.route('/api/admin/documents')
 def get_documents():
     """Get all documents"""
     if session.get('user_type') != 'admin':
@@ -234,9 +352,11 @@ def get_documents():
                 'filename': doc.get('filename', 'Unknown'),
                 'file_type': doc.get('file_type', ''),
                 'uploaded_at': doc.get('uploaded_at', ''),
-                'status': doc.get('status', 'uploaded'),
+                'status': doc.get('status', 'analyzed'),
                 'risk_level': doc.get('risk_level', 'UNKNOWN'),
-                'entity_count': len(doc.get('entities', []))
+                'threats_count': len(doc.get('entities', [])),
+                'entity_count': len(doc.get('entities', [])),
+                'has_protected': bool(doc.get('protected_path'))
             })
         
         return jsonify(doc_list)
@@ -245,14 +365,14 @@ def get_documents():
         return jsonify({'error': str(e)}), 500
 
 # ============================================
-# ROUTES - FILE ANALYSIS & REPORTS
+# ROUTES - FILE UPLOAD & PROTECTION
 # ============================================
 
 @app.route('/api/upload', methods=['POST'])
+@app.route('/api/admin/upload', methods=['POST'])
 def upload_file():
     """
-    Upload file and trigger Presidio analysis  
-    Returns report for user approval
+    Upload file, analyze with Gemini, apply blur, return protected version
     """
     if session.get('user_type') != 'admin':
         return jsonify({'error': 'Unauthorized'}), 401
@@ -277,41 +397,32 @@ def upload_file():
             # Step 1: Determine file type
             file_type = doc_processor.get_file_type(temp_path)
             
-            # Step 2: Extract text using OCR  
-            ocr_result = ocr_processor.extract_from_file(temp_path)
-            
-            if not ocr_result.get('success'):
-                logger.warning(f"OCR extraction failed: {ocr_result.get('error')}")
-                extracted_text = ''
+            # Step 2: Convert to image if needed
+            image_paths = []
+            if file_type == 'image':
+                image_paths = [temp_path]
             else:
-                extracted_text = ocr_result.get('text', '')
+                # Convert document to images
+                image_paths = doc_processor.convert_to_images(temp_path, file_type)
             
-            # Step 3: Analyze with Presidio
-            analysis = pii_analyzer.analyze_text(extracted_text, temp_path)
+            if not image_paths:
+                return jsonify({'error': 'Could not process file'}), 400
+            
+            # Step 3: Analyze first image with Gemini
+            analysis = analyze_with_gemini(image_paths[0])
             
             if not analysis.get('success'):
-                logger.warning(f"Presidio analysis failed: {analysis.get('error')}")
+                logger.warning(f"Analysis failed: {analysis.get('error')}")
                 entities = []
                 risk_level = 'UNKNOWN'
             else:
                 entities = analysis.get('entities', [])
                 risk_level = analysis.get('risk_level', 'LOW')
             
-            # Step 4: Generate reports (HTML and JSON)
-            html_report_path = f'reports/{doc_id}_report.html'
-            pdf_report_path = f'reports/{doc_id}_report.pdf'
-            
-            html_report = report_generator.generate_html_report(
-                temp_path, file.filename, entities, risk_level, html_report_path
-            )
-            
-            try:
-                pdf_path = report_generator.generate_pdf_report(
-                    temp_path, file.filename, entities, risk_level, pdf_report_path
-                )
-            except Exception as e:
-                logger.warning(f"PDF generation failed: {e}")
-                pdf_path = None
+            # Step 4: Store original image and return analysis
+            Path('protected_documents').mkdir(exist_ok=True)
+            protected_filename = f"protected_{doc_id}_{Path(file.filename).stem}.jpg"
+            protected_path = f'protected_documents/{protected_filename}'
             
             # Step 5: Save to database
             documents = load_documents()
@@ -322,42 +433,100 @@ def upload_file():
                 'uploaded_by': email,
                 'uploaded_at': datetime.now().isoformat(),
                 'original_path': temp_path,
-                'status': 'report_ready',  # Waiting for user to approve safeguards
+                'protected_path': None,
+                'status': 'analyzed',
                 'entities': entities,
                 'risk_level': risk_level,
                 'entity_count': len(entities)
             }
             save_documents(documents)
             
-            # Return report for user approval
+            # Update admin document count
+            keys = load_key_vault()
+            if email in keys:
+                keys[email]['documents_count'] = keys[email].get('documents_count', 0) + 1
+                save_key_vault(keys)
+            
             return jsonify({
                 'success': True,
                 'document_id': doc_id,
                 'filename': file.filename,
                 'file_type': file_type,
                 'risk_level': risk_level,
+                'threats_detected': len(entities),
                 'entity_count': len(entities),
                 'entities': entities,
-                'html_report': html_report,
-                'has_pdf': bool(pdf_path),
-                'message': f'Analysis complete. {len(entities)} PII items detected. Please review recommendations and approve safeguarding methods.'
+                'message': f'Analysis complete. {len(entities)} PII items detected.'
             })
         
         except Exception as e:
-            logger.error(f"Analysis error: {e}")
+            logger.error(f"Analysis/protection error: {e}")
+            import traceback
             traceback.print_exc()
-            return jsonify({'error': f'Analysis failed: {str(e)}'}), 500
+            return jsonify({'error': f'Processing failed: {str(e)}'}), 500
     
     except Exception as e:
         logger.error(f"Upload error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/blur-image/<doc_id>', methods=['POST'])
+@app.route('/api/admin/blur-image/<doc_id>/<blur_type>', methods=['POST'])
+def blur_image_endpoint(doc_id, blur_type='blur'):
+    """Apply blur effect to uploaded image"""
+    if session.get('user_type') != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    try:
+        docs = load_documents()
+        if doc_id not in docs:
+            return jsonify({'error': 'Document not found'}), 404
+        
+        doc = docs[doc_id]
+        original_path = doc.get('original_path')
+        
+        if not Path(original_path).exists():
+            return jsonify({'error': 'Original file not found'}), 404
+        
+        # Create protected version with blur
+        Path('protected_documents').mkdir(exist_ok=True)
+        protected_filename = f"protected_{doc_id}_{Path(doc.get('filename')).stem}.jpg"
+        protected_path = f'protected_documents/{protected_filename}'
+        
+        try:
+            # Apply blur or pixelation to the image
+            if blur_type == 'pixelate':
+                redactor.pixelate_image(original_path, protected_path, pixel_size=20)
+            else:  # default to blur
+                redactor.blur_image(original_path, protected_path, blur_strength=51)
+            
+            # Update document
+            doc['protected_path'] = protected_path
+            doc['status'] = 'protected'
+            doc['blur_type'] = blur_type
+            docs[doc_id] = doc
+            save_documents(docs)
+            
+            logger.info(f"Applied {blur_type} to document {doc_id}")
+            
+            # Return the blurred image file for download
+            return send_file(protected_path, as_attachment=True, download_name=f"{blur_type}_{doc_id}.jpg")
+        
+        except Exception as e:
+            logger.error(f"Error processing blur: {e}")
+            raise
+    
+    except Exception as e:
+        logger.error(f"Blur error: {e}")
+        import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/report/<doc_id>')
 def get_report(doc_id):
     """
-    Get analysis report for document
-    Query param: format (html, pdf, json)
+    Get document analysis details
     """
     if session.get('user_type') != 'admin':
         return jsonify({'error': 'Unauthorized'}), 401
@@ -368,147 +537,16 @@ def get_report(doc_id):
             return jsonify({'error': 'Document not found'}), 404
         
         doc = docs[doc_id]
-        report_format = request.args.get('format', 'html')
-        
-        if report_format == 'html':
-            report_path = f'reports/{doc_id}_report.html'
-            if Path(report_path).exists():
-                with open(report_path, 'r') as f:
-                    return f.read()
-            return jsonify({'error': 'Report not found'}), 404
-        
-        elif report_format == 'pdf':
-            report_path = f'reports/{doc_id}_report.pdf'
-            if Path(report_path).exists():
-                return send_file(report_path, mimetype='application/pdf', as_attachment=True)
-            return jsonify({'error': 'PDF report not found'}), 404
-        
-        elif report_format == 'json':
-            return jsonify({
-                'document': doc.get('filename'),
-                'uploaded': doc.get('uploaded_at'),
-                'risk_level': doc.get('risk_level'),
-                'entities': doc.get('entities', [])
-            })
-        
-        return jsonify({'error': 'Invalid format'}), 400
-    
-    except Exception as e:
-        logger.error(f"Error getting report: {e}")
-        return jsonify({'error': str(e)}), 500
-
-# ============================================
-# ROUTES - SAFEGUARD APPROVAL & APPLICATION
-# ============================================
-
-@app.route('/api/approve-safeguards/<doc_id>', methods=['POST'])
-def approve_safeguards(doc_id):
-    """
-    User approves and selects safeguarding methods for each entity
-    POST data: { entity_choices: { 0: 'blur', 1: 'redact', ... } }
-    """
-    if session.get('user_type') != 'admin':
-        return jsonify({'error': 'Unauthorized'}), 401
-    
-    try:
-        data = request.json
-        entity_choices = data.get('entity_choices', {})
-        
-        docs = load_documents()
-        if doc_id not in docs:
-            return jsonify({'error': 'Document not found'}), 404
-        
-        doc = docs[doc_id]
-        
-        # Validate choices
-        valid_methods = redactor.get_safeguard_methods().keys()
-        for idx, method in entity_choices.items():
-            if method not in valid_methods:
-                return jsonify({'error': f'Invalid safeguard method: {method}'}), 400
-        
-        # Save approval
-        doc['safeguard_approvals'] = entity_choices
-        doc['status'] = 'approved'
-        doc['approved_at'] = datetime.now().isoformat()
-        docs[doc_id] = doc
-        save_documents(docs)
-        
         return jsonify({
-            'success': True,
-            'message': 'Safeguarding methods approved. Applying now...'
+            'document': doc.get('filename'),
+            'uploaded': doc.get('uploaded_at'),
+            'risk_level': doc.get('risk_level'),
+            'entities': doc.get('entities', []),
+            'entity_count': len(doc.get('entities', []))
         })
     
     except Exception as e:
-        logger.error(f"Approval error: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/apply-safeguards/<doc_id>', methods=['POST'])
-def apply_safeguards(doc_id):
-    """
-    Apply approved safeguarding methods to document
-    Creates protected version for download
-    """
-    if session.get('user_type') != 'admin':
-        return jsonify({'error': 'Unauthorized'}), 401
-    
-    try:
-        docs = load_documents()
-        if doc_id not in docs:
-            return jsonify({'error': 'Document not found'}), 404
-        
-        doc = docs[doc_id]
-        
-        if doc.get('status') != 'approved':
-            return jsonify({'error': 'Document not approved for safeguarding'}), 400
-        
-        original_path = doc.get('original_path')
-        entities = doc.get('entities', [])
-        safeguard_selections = doc.get('safeguard_approvals', {})
-        file_type = doc.get('file_type', 'image')
-        
-        if not Path(original_path).exists():
-            return jsonify({'error': 'Original file not found'}), 404
-        
-        # Create protected version
-        Path('protected_documents').mkdir(exist_ok=True)
-        protected_filename = f"protected_{doc_id}_{Path(doc.get('filename')).stem}.{Path(doc.get('filename')).suffix.lstrip('.')}"
-        protected_path = f'protected_documents/{protected_filename}'
-        
-        try:
-            # Apply safeguarding based on file type
-            if file_type == 'word':
-                redactor.apply_redaction_to_document(
-                    original_path, entities, 
-                    {int(k): v for k, v in safeguard_selections.items()},
-                    protected_path, file_type
-                )
-            else:
-                # For images, PDFs, etc.
-                redactor.apply_redaction_to_image(
-                    original_path, entities,
-                    {int(k): v for k, v in safeguard_selections.items()},
-                    protected_path
-                )
-            
-            # Update document status
-            doc['status'] = 'protected'
-            doc['protected_path'] = protected_path
-            doc['protected_at'] = datetime.now().isoformat()
-            docs[doc_id] = doc
-            save_documents(docs)
-            
-            return jsonify({
-                'success': True,
-                'protected_path': protected_path,
-                'message': 'Safeguarding applied successfully'
-            })
-        
-        except Exception as e:
-            logger.error(f"Error applying safeguards: {e}")
-            return jsonify({'error': f'Safeguarding failed: {str(e)}'}), 500
-    
-    except Exception as e:
-        logger.error(f"Apply safeguards error: {e}")
+        logger.error(f"Error getting report: {e}")
         return jsonify({'error': str(e)}), 500
 
 # ============================================
@@ -519,7 +557,7 @@ def apply_safeguards(doc_id):
 def download(doc_id, version):
     """
     Download document
-    version: 'original', 'protected', or 'report'
+    version: 'original' or 'protected'
     """
     if session.get('user_type') != 'admin':
         return jsonify({'error': 'Unauthorized'}), 401
@@ -543,16 +581,6 @@ def download(doc_id, version):
             if not path or not Path(path).exists():
                 return jsonify({'error': 'Protected version not found'}), 404
             return send_file(path, as_attachment=True, download_name=f"protected_{filename}")
-        
-        elif version == 'report':
-            report_path = f'reports/{doc_id}_report.pdf'
-            if not Path(report_path).exists():
-                report_path = f'reports/{doc_id}_report.html'
-            
-            if not Path(report_path).exists():
-                return jsonify({'error': 'Report not found'}), 404
-            
-            return send_file(report_path, as_attachment=True)
         
         return jsonify({'error': 'Invalid version'}), 400
     
@@ -578,8 +606,10 @@ def server_error(e):
 
 if __name__ == '__main__':
     logger.info("Starting Image Protection System...")
-    logger.info(f"✓ Presidio Analyzer initialized")
-    logger.info(f"✓ OCR Processor initialized")
-    logger.info(f"✓ Report Generator initialized")
-    logger.info(f"✓ Encryption Engine initialized")
+    if GEMINI_API_KEY:
+        logger.info("✓ Gemini Vision API configured")
+    else:
+        logger.warning("⚠ Gemini API key not found - analysis will not work")
+    logger.info("✓ Document Processor initialized")
+    logger.info("✓ PII Redactor initialized")
     app.run(debug=False, port=5001, host='127.0.0.1')

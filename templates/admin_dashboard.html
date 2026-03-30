@@ -413,6 +413,10 @@
                         if (doc.risk_level === 'HIGH') highRiskCount++;
 
                         const riskClass = `risk-${doc.risk_level.toLowerCase()}`;
+                        const protectedBtn = doc.has_protected 
+                            ? `<button class="btn btn-success" onclick="downloadFile('${doc.id}', 'protected')">Download Protected</button>`
+                            : `<button class="btn btn-secondary" disabled>No Protected Version</button>`;
+                        
                         const row = `
                             <tr>
                                 <td>${doc.filename}</td>
@@ -421,8 +425,8 @@
                                 <td>${doc.threats_count}</td>
                                 <td><span class="risk-badge ${riskClass}">${doc.risk_level}</span></td>
                                 <td class="action-buttons">
-                                    <button class="btn btn-success" onclick="alert('Download protected version - coming soon!')">Protected</button>
-                                    <button class="btn btn-danger" onclick="alert('Delete - coming soon!')">Delete</button>
+                                    ${protectedBtn}
+                                    <button class="btn btn-info" onclick="downloadFile('${doc.id}', 'original')">Original</button>
                                 </td>
                             </tr>
                         `;
@@ -559,6 +563,32 @@
                 statusEl.innerHTML = `<p><strong>❌ Error:</strong> ${err.message}</p>`;
                 statusEl.className = 'upload-status error';
             });
+        }
+
+        function downloadFile(docId, version) {
+            fetch(`/api/download/${docId}/${version}`)
+                .then(response => {
+                    if (response.ok) {
+                        return response.blob().then(blob => {
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `${version}_${docId}.jpg`;
+                            document.body.appendChild(a);
+                            a.click();
+                            window.URL.revokeObjectURL(url);
+                            document.body.removeChild(a);
+                        });
+                    } else {
+                        return response.json().then(err => {
+                            throw new Error(err.error || `Failed to download ${version} file`);
+                        });
+                    }
+                })
+                .catch(err => {
+                    console.error('Download error:', err);
+                    alert(`Error: ${err.message}`);
+                });
         }
 
         // Load documents on page load

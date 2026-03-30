@@ -77,5 +77,33 @@
     "threats": [],
     "risk_level": "LOW",
     "threats_count": 0
+  },
+  "cb36bdf0-80c0-4cdd-9e50-26dcb2141e22": {
+    "id": "cb36bdf0-80c0-4cdd-9e50-26dcb2141e22",
+    "filename": "ISHA_headshot.jpeg",
+    "file_type": "image",
+    "uploaded_by": "abc@gmail.com",
+    "uploaded_at": "2026-03-30T12:10:44.826432",
+    "original_path": "uploads/cb36bdf0-80c0-4cdd-9e50-26dcb2141e22_ISHA_headshot.jpeg",
+    "protected_path": "protected_documents/protected_cb36bdf0-80c0-4cdd-9e50-26dcb2141e22_ISHA_headshot.jpg",
+    "status": "protected",
+    "entities": [],
+    "risk_level": "UNKNOWN",
+    "entity_count": 0,
+    "blur_type": "blur"
+  },
+  "21ffeef1-3790-4b11-98ac-d6dde14d6dd7": {
+    "id": "21ffeef1-3790-4b11-98ac-d6dde14d6dd7",
+    "filename": "20200225_BC_200227_Trumbull_056.jpg",
+    "file_type": "image",
+    "uploaded_by": "abc@gmail.com",
+    "uploaded_at": "2026-03-30T12:15:47.968471",
+    "original_path": "uploads/21ffeef1-3790-4b11-98ac-d6dde14d6dd7_20200225_BC_200227_Trumbull_056.jpg",
+    "protected_path": "protected_documents/protected_21ffeef1-3790-4b11-98ac-d6dde14d6dd7_20200225_BC_200227_Trumbull_056.jpg",
+    "status": "protected",
+    "entities": [],
+    "risk_level": "UNKNOWN",
+    "entity_count": 0,
+    "blur_type": "blur"
   }
 }
