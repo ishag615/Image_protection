@@ -490,13 +490,28 @@
                         <p>Risk level: <span class="risk-badge risk-${result.risk_level.toLowerCase()}">${result.risk_level}</span></p>
                     `;
                     
-                    // Add blur options for images
+                    // Add credit card detection for images
                     if (result.file_type === 'image') {
-                        statusHTML += `
-                            <p style="margin-top: 15px;"><strong>🎨 Blur this image?</strong></p>
-                            <button onclick="blurImage('${result.document_id}', 'blur')" style="background: #667eea; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-right: 10px;">Blur Image</button>
-                            <button onclick="blurImage('${result.document_id}', 'pixelate')" style="background: #764ba2; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Pixelate Image</button>
-                        `;
+                        if (result.credit_card_detected) {
+                            // Credit card was detected
+                            statusHTML += `
+                                <p style="margin-top: 15px; background: #fff3e0; padding: 10px; border-radius: 4px; border-left: 4px solid #ff9800;">
+                                    <strong>🔴 CREDIT CARD DETECTED!</strong><br/>
+                                    Confidence: ${Math.round(result.credit_card_info.confidence * 100)}%
+                                </p>
+                                <p style="margin-top: 10px;"><strong>🔒 Protect this credit card?</strong></p>
+                                <button onclick="blurCreditCard('${result.document_id}', 'regions')" style="background: #ff6b6b; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-right: 10px;">Blur Card Details</button>
+                                <button onclick="blurCreditCard('${result.document_id}', 'full')" style="background: #d32f2f; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Blur Entire Card</button>
+                            `;
+                        } else {
+                            // No credit card detected, show generic blur options
+                            statusHTML += `
+                                <p style="margin-top: 10px;"><strong>🎨 Blur this image?</strong></p>
+                                <button onclick="blurImage('${result.document_id}', 'blur')" style="background: #667eea; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-right: 10px;">Blur Image</button>
+                                <button onclick="blurImage('${result.document_id}', 'pixelate')" style="background: #764ba2; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Pixelate Image</button>
+                                <button onclick="detectCreditCard('${result.document_id}')" style="background: #ff9800; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-left: 10px;">Check for Credit Card</button>
+                            `;
+                        }
                     }
                     
                     statusEl.innerHTML = statusHTML;
@@ -526,6 +541,78 @@
                 .then(() => {
                     localStorage.removeItem('admin-email');
                     window.location.href = '/';
+                });
+        }
+
+        function blurCreditCard(docId, blurType) {
+            const statusEl = document.getElementById('upload-status');
+            statusEl.innerHTML = `<p>⏳ Protecting credit card information...</p>`;
+            statusEl.className = 'upload-status success';
+
+            fetch(`/api/blur-credit-card/${docId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ blur_type: blurType })
+            })
+            .then(response => {
+                if (response.ok) {
+                    // Download the protected image
+                    response.blob().then(blob => {
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `protected_credit_card_${docId}.jpg`;
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        document.body.removeChild(a);
+                        
+                        statusEl.innerHTML = `<p><strong>✅ Protected credit card image downloaded!</strong></p>`;
+                    });
+                } else {
+                    return response.json().then(err => {
+                        throw new Error(err.error || 'Failed to protect credit card');
+                    });
+                }
+            })
+            .catch(err => {
+                console.error('Credit card blur error:', err);
+                statusEl.innerHTML = `<p><strong>❌ Error:</strong> ${err.message}</p>`;
+                statusEl.className = 'upload-status error';
+            });
+        }
+
+        function detectCreditCard(docId) {
+            const statusEl = document.getElementById('upload-status');
+            statusEl.innerHTML = `<p>⏳ Scanning for credit cards...</p>`;
+            statusEl.className = 'upload-status success';
+
+            fetch(`/api/detect-credit-card/${docId}`)
+                .then(r => r.json())
+                .then(result => {
+                    if (result.success) {
+                        if (result.has_credit_card) {
+                            statusEl.innerHTML = `
+                                <p><strong>🔴 CREDIT CARD DETECTED!</strong></p>
+                                <p>Confidence: ${Math.round(result.confidence * 100)}%</p>
+                                <p style="margin-top: 10px;"><strong>🔒 Protect this credit card?</strong></p>
+                                <button onclick="blurCreditCard('${docId}', 'regions')" style="background: #ff6b6b; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-right: 10px;">Blur Card Details</button>
+                                <button onclick="blurCreditCard('${docId}', 'full')" style="background: #d32f2f; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Blur Entire Card</button>
+                            `;
+                        } else {
+                            statusEl.innerHTML = `<p>✅ No credit card detected in this image.</p>`;
+                        }
+                        statusEl.className = 'upload-status success';
+                    } else {
+                        throw new Error(result.error || 'Detection failed');
+                    }
+                })
+                .catch(err => {
+                    console.error('Credit card detection error:', err);
+                    statusEl.innerHTML = `<p><strong>❌ Error:</strong> ${err.message}</p>`;
+                    statusEl.className = 'upload-status error';
                 });
         }
 

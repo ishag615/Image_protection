@@ -105,5 +105,283 @@
     "risk_level": "UNKNOWN",
     "entity_count": 0,
     "blur_type": "blur"
+  },
+  "c43da16c-93a8-4364-9701-fe1a723fa5c2": {
+    "id": "c43da16c-93a8-4364-9701-fe1a723fa5c2",
+    "filename": "Saloni Christian, Kent State College of Podiatric Medicine student - photo 1 by Bob Christy - WEB.jpg",
+    "file_type": "image",
+    "uploaded_by": "1234@kent.edu",
+    "uploaded_at": "2026-04-06T12:08:43.030820",
+    "original_path": "uploads/c43da16c-93a8-4364-9701-fe1a723fa5c2_Saloni Christian, Kent State College of Podiatric Medicine student - photo 1 by Bob Christy - WEB.jpg",
+    "protected_path": "protected_documents/protected_c43da16c-93a8-4364-9701-fe1a723fa5c2_Saloni Christian, Kent State College of Podiatric Medicine student - photo 1 by Bob Christy - WEB.jpg",
+    "status": "protected",
+    "entities": [],
+    "risk_level": "UNKNOWN",
+    "entity_count": 0,
+    "blur_type": "blur"
+  },
+  "53aa2fae-0d2d-4cce-be2e-8fc4137e94df": {
+    "id": "53aa2fae-0d2d-4cce-be2e-8fc4137e94df",
+    "filename": "protected_aac7dc32-75bd-4765-a46c-bcd5e1ad4e3d.jpg",
+    "file_type": "image",
+    "uploaded_by": "abc@gmail.com",
+    "uploaded_at": "2026-04-06T12:16:16.247608",
+    "original_path": "uploads/53aa2fae-0d2d-4cce-be2e-8fc4137e94df_protected_aac7dc32-75bd-4765-a46c-bcd5e1ad4e3d.jpg",
+    "protected_path": "protected_documents/protected_53aa2fae-0d2d-4cce-be2e-8fc4137e94df_protected_aac7dc32-75bd-4765-a46c-bcd5e1ad4e3d.jpg",
+    "status": "protected",
+    "entities": [],
+    "risk_level": "UNKNOWN",
+    "entity_count": 0,
+    "blur_type": "pixelate"
+  },
+  "f9d1ed05-8c3c-4609-a234-a7b7d5713cc3": {
+    "id": "f9d1ed05-8c3c-4609-a234-a7b7d5713cc3",
+    "filename": "original_cb36bdf0-80c0-4cdd-9e50-26dcb2141e22.jpg",
+    "file_type": "image",
+    "uploaded_by": "12345@abc.com",
+    "uploaded_at": "2026-04-06T12:59:43.347684",
+    "original_path": "uploads/f9d1ed05-8c3c-4609-a234-a7b7d5713cc3_original_cb36bdf0-80c0-4cdd-9e50-26dcb2141e22.jpg",
+    "protected_path": "protected_documents/protected_f9d1ed05-8c3c-4609-a234-a7b7d5713cc3_original_cb36bdf0-80c0-4cdd-9e50-26dcb2141e22.jpg",
+    "status": "protected",
+    "entities": [],
+    "risk_level": "UNKNOWN",
+    "entity_count": 0,
+    "blur_type": "blur"
+  },
+  "28b04503-fbb4-44b6-b05d-bf57cd3dc08d": {
+    "id": "28b04503-fbb4-44b6-b05d-bf57cd3dc08d",
+    "filename": "Screenshot 2026-04-27 at 8.17.31\u202fAM.png",
+    "file_type": "image",
+    "uploaded_by": "12345@abcd.com",
+    "uploaded_at": "2026-04-27T08:17:43.004012",
+    "original_path": "uploads/28b04503-fbb4-44b6-b05d-bf57cd3dc08d_Screenshot 2026-04-27 at 8.17.31\u202fAM.png",
+    "protected_path": null,
+    "status": "analyzed",
+    "entities": [],
+    "risk_level": "UNKNOWN",
+    "entity_count": 0,
+    "credit_card_detected": false,
+    "credit_card_detection": null,
+    "credit_card_protected_path": null
+  },
+  "42c538a2-f3dd-4737-ada5-d1d44c6cb36d": {
+    "id": "42c538a2-f3dd-4737-ada5-d1d44c6cb36d",
+    "filename": "Screenshot 2026-04-27 at 8.17.31\u202fAM.png",
+    "file_type": "image",
+    "uploaded_by": "12345@abcd.com",
+    "uploaded_at": "2026-04-27T11:15:33.916246",
+    "original_path": "uploads/42c538a2-f3dd-4737-ada5-d1d44c6cb36d_Screenshot 2026-04-27 at 8.17.31\u202fAM.png",
+    "protected_path": null,
+    "status": "analyzed",
+    "entities": [],
+    "risk_level": "UNKNOWN",
+    "entity_count": 0,
+    "credit_card_detected": false,
+    "credit_card_detection": null,
+    "credit_card_protected_path": null
+  },
+  "51bc466a-1700-4ba5-939b-3644626a74ab": {
+    "id": "51bc466a-1700-4ba5-939b-3644626a74ab",
+    "filename": "Screenshot 2026-04-27 at 8.17.31\u202fAM.png",
+    "file_type": "image",
+    "uploaded_by": "12345@abcd.com",
+    "uploaded_at": "2026-04-27T11:19:49.542257",
+    "original_path": "uploads/51bc466a-1700-4ba5-939b-3644626a74ab_Screenshot 2026-04-27 at 8.17.31\u202fAM.png",
+    "protected_path": null,
+    "status": "credit_card_protected",
+    "entities": [],
+    "risk_level": "UNKNOWN",
+    "entity_count": 0,
+    "credit_card_detected": true,
+    "credit_card_detection": {
+      "has_credit_card": true,
+      "method": "opencv",
+      "regions": [
+        {
+          "type": "card_number",
+          "coords": [
+            40,
+            174,
+            647,
+            306
+          ],
+          "blur_strength": 31,
+          "description": "Credit card number region"
+        },
+        {
+          "type": "expiry",
+          "coords": [
+            411,
+            438,
+            647,
+            570
+          ],
+          "blur_strength": 31,
+          "description": "Expiration date region"
+        },
+        {
+          "type": "cvv",
+          "coords": [
+            478,
+            273,
+            647,
+            405
+          ],
+          "blur_strength": 41,
+          "description": "CVV/CVC code region"
+        }
+      ],
+      "confidence": 0.75,
+      "success": true,
+      "card_region": [
+        7,
+        9,
+        674,
+        660
+      ]
+    },
+    "credit_card_protected_path": "protected_documents/cc_protected_51bc466a-1700-4ba5-939b-3644626a74ab_Screenshot 2026-04-27 at 8.17.31\u202fAM.jpg",
+    "credit_card_blur_type": "regions"
+  },
+  "b4691bd9-b4d5-4615-aa0d-778fa3797792": {
+    "id": "b4691bd9-b4d5-4615-aa0d-778fa3797792",
+    "filename": "Screenshot 2026-04-27 at 11.20.47\u202fAM.png",
+    "file_type": "image",
+    "uploaded_by": "12345@abcd.com",
+    "uploaded_at": "2026-04-27T11:20:56.870033",
+    "original_path": "uploads/b4691bd9-b4d5-4615-aa0d-778fa3797792_Screenshot 2026-04-27 at 11.20.47\u202fAM.png",
+    "protected_path": null,
+    "status": "credit_card_protected",
+    "entities": [],
+    "risk_level": "UNKNOWN",
+    "entity_count": 0,
+    "credit_card_detected": true,
+    "credit_card_detection": {
+      "has_credit_card": true,
+      "method": "opencv",
+      "regions": [
+        {
+          "type": "card_number",
+          "coords": [
+            1059,
+            368,
+            1396,
+            407
+          ],
+          "blur_strength": 31,
+          "description": "Credit card number region"
+        },
+        {
+          "type": "expiry",
+          "coords": [
+            1265,
+            447,
+            1396,
+            486
+          ],
+          "blur_strength": 31,
+          "description": "Expiration date region"
+        },
+        {
+          "type": "cvv",
+          "coords": [
+            1302,
+            397,
+            1396,
+            437
+          ],
+          "blur_strength": 41,
+          "description": "CVV/CVC code region"
+        }
+      ],
+      "confidence": 0.75,
+      "success": true,
+      "card_region": [
+        1041,
+        319,
+        374,
+        197
+      ]
+    },
+    "credit_card_protected_path": "protected_documents/cc_protected_b4691bd9-b4d5-4615-aa0d-778fa3797792_Screenshot 2026-04-27 at 11.20.47\u202fAM.jpg",
+    "credit_card_blur_type": "regions"
+  },
+  "946c596e-755e-4897-8aa3-fe8fe7fa27df": {
+    "id": "946c596e-755e-4897-8aa3-fe8fe7fa27df",
+    "filename": "Screenshot 2026-04-22 at 3.46.37\u202fPM.png",
+    "file_type": "image",
+    "uploaded_by": "12345@abcd.com",
+    "uploaded_at": "2026-04-27T11:21:48.454437",
+    "original_path": "uploads/946c596e-755e-4897-8aa3-fe8fe7fa27df_Screenshot 2026-04-22 at 3.46.37\u202fPM.png",
+    "protected_path": null,
+    "status": "analyzed",
+    "entities": [],
+    "risk_level": "UNKNOWN",
+    "entity_count": 0,
+    "credit_card_detected": true,
+    "credit_card_detection": {
+      "has_credit_card": true,
+      "method": "opencv",
+      "regions": [
+        {
+          "type": "card_number",
+          "coords": [
+            169,
+            396,
+            1465,
+            509
+          ],
+          "blur_strength": 31,
+          "description": "Credit card number region"
+        },
+        {
+          "type": "expiry",
+          "coords": [
+            961,
+            621,
+            1465,
+            734
+          ],
+          "blur_strength": 31,
+          "description": "Expiration date region"
+        },
+        {
+          "type": "cvv",
+          "coords": [
+            1105,
+            481,
+            1465,
+            593
+          ],
+          "blur_strength": 41,
+          "description": "CVV/CVC code region"
+        }
+      ],
+      "confidence": 0.75,
+      "success": true,
+      "card_region": [
+        97,
+        256,
+        1440,
+        563
+      ]
+    },
+    "credit_card_protected_path": null
+  },
+  "4be4755b-2173-4c3a-9c5b-7ea26818f2d5": {
+    "id": "4be4755b-2173-4c3a-9c5b-7ea26818f2d5",
+    "filename": "Screenshot 2026-04-27 at 8.17.31\u202fAM.png",
+    "file_type": "image",
+    "uploaded_by": "12345@abcd.com",
+    "uploaded_at": "2026-04-27T11:30:32.414956",
+    "original_path": "uploads/4be4755b-2173-4c3a-9c5b-7ea26818f2d5_Screenshot 2026-04-27 at 8.17.31\u202fAM.png",
+    "protected_path": null,
+    "status": "analyzed",
+    "entities": [],
+    "risk_level": "UNKNOWN",
+    "entity_count": 0,
+    "credit_card_detected": false,
+    "credit_card_detection": null,
+    "credit_card_protected_path": null
   }
 }

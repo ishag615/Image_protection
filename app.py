@@ -17,6 +17,7 @@ import logging
 
 from document_processor import DocumentProcessor
 from pii_redactor import PIIRedactor
+from credit_card_detector import CreditCardDetector
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -44,6 +45,7 @@ if GEMINI_API_KEY:
 # Initialize processors and redactor
 doc_processor = DocumentProcessor()
 redactor = PIIRedactor()
+credit_card_detector = CreditCardDetector(gemini_api_key=GEMINI_API_KEY)
 
 # Database and storage paths
 DOCUMENTS_DB = 'documents.json'
@@ -519,6 +521,143 @@ def blur_image_endpoint(doc_id, blur_type='blur'):
     
     except Exception as e:
         logger.error(f"Blur error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+# ============================================
+# ROUTES - CREDIT CARD DETECTION & PROTECTION
+# ============================================
+
+@app.route('/api/detect-credit-card/<doc_id>', methods=['GET'])
+def detect_credit_card(doc_id):
+    """
+    Detect credit card in uploaded image
+    Returns detection result with blur regions if card found
+    """
+    if session.get('user_type') != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    try:
+        docs = load_documents()
+        if doc_id not in docs:
+            return jsonify({'error': 'Document not found'}), 404
+        
+        doc = docs[doc_id]
+        original_path = doc.get('original_path')
+        
+        if not Path(original_path).exists():
+            return jsonify({'error': 'Original file not found'}), 404
+        
+        # Detect credit card
+        detection_result = credit_card_detector.detect_credit_card_regions(original_path)
+        
+        if not detection_result.get('has_credit_card'):
+            return jsonify({
+                'success': True,
+                'has_credit_card': False,
+                'message': 'No credit card detected in this image'
+            })
+        
+        # Store detection result in document
+        doc['credit_card_detected'] = True
+        doc['credit_card_detection'] = detection_result
+        docs[doc_id] = doc
+        save_documents(docs)
+        
+        return jsonify({
+            'success': True,
+            'has_credit_card': True,
+            'confidence': detection_result.get('confidence', 0),
+            'regions': detection_result.get('regions', []),
+            'card_region': detection_result.get('card_region'),
+            'message': 'Credit card detected! Ready to blur sensitive information.',
+            'detection_method': detection_result.get('method')
+        })
+    
+    except Exception as e:
+        logger.error(f"Credit card detection error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/blur-credit-card/<doc_id>', methods=['POST'])
+def blur_credit_card(doc_id):
+    """
+    Blur sensitive regions of credit card (number, CVV, expiration)
+    and return protected version for download
+    """
+    if session.get('user_type') != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    try:
+        data = request.json or {}
+        blur_type = data.get('blur_type', 'regions')  # 'regions' or 'full'
+        
+        docs = load_documents()
+        if doc_id not in docs:
+            return jsonify({'error': 'Document not found'}), 404
+        
+        doc = docs[doc_id]
+        original_path = doc.get('original_path')
+        
+        if not Path(original_path).exists():
+            return jsonify({'error': 'Original file not found'}), 404
+        
+        if not doc.get('credit_card_detected'):
+            return jsonify({'error': 'No credit card detected. Run detection first.'}), 400
+        
+        detection_result = doc.get('credit_card_detection', {})
+        
+        # Create protected version
+        Path('protected_documents').mkdir(exist_ok=True)
+        protected_filename = f"cc_protected_{doc_id}_{Path(doc.get('filename')).stem}.jpg"
+        protected_path = f'protected_documents/{protected_filename}'
+        
+        try:
+            if blur_type == 'full' or not detection_result.get('regions'):
+                # Blur entire card
+                if detection_result.get('card_region'):
+                    credit_card_detector.blur_credit_card_full(
+                        original_path, 
+                        protected_path,
+                        detection_result['card_region'],
+                        blur_strength=51
+                    )
+                else:
+                    # Fallback: use regular blur
+                    redactor.blur_image(original_path, protected_path, blur_strength=51)
+            else:
+                # Blur specific regions (number, CVV, expiration)
+                credit_card_detector.blur_credit_card_regions(
+                    original_path,
+                    protected_path,
+                    detection_result['regions'],
+                    blur_strength=31
+                )
+            
+            # Update document
+            doc['credit_card_protected_path'] = protected_path
+            doc['credit_card_blur_type'] = blur_type
+            doc['status'] = 'credit_card_protected'
+            docs[doc_id] = doc
+            save_documents(docs)
+            
+            logger.info(f"Applied credit card {blur_type} blur to document {doc_id}")
+            
+            # Return the blurred image file for download
+            return send_file(
+                protected_path,
+                as_attachment=True,
+                download_name=f"protected_credit_card_{doc_id}.jpg"
+            )
+        
+        except Exception as e:
+            logger.error(f"Error processing credit card blur: {e}")
+            raise
+    
+    except Exception as e:
+        logger.error(f"Credit card blur error: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
