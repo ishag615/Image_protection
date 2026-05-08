@@ -13,6 +13,7 @@ from encryption_engine import EncryptionEngine
 from docx import Document as DocxDocument
 from docx.shared import RGBColor, Pt
 import io
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -100,18 +101,13 @@ class PIIRedactor:
     def _apply_text_redaction(self, img_cv: np.ndarray, entity: Dict[str, Any]) -> np.ndarray:
         """Apply complete blackout redaction to entity location in image"""
         try:
-            # For image-based redaction, we apply aggressive blur/blackout
-            # Since we don't have exact bounding boxes, apply to general area
-            h, w = img_cv.shape[:2]
-            
-            # Create a mask and apply blackout
-            overlay = img_cv.copy()
-            color = (0, 0, 0)  # Black
-            
-            # Apply to a conservative area (this is approximate)
-            # In a real system, this would use detected text regions
-            cv2.rectangle(overlay, (0, 0), (w, h), color, -1)
-            img_cv = cv2.addWeighted(overlay, 0.3, img_cv, 0.7, 0)
+            boxes = entity.get('boxes') or []
+            if not boxes:
+                return img_cv
+
+            for box in boxes:
+                x1, y1, x2, y2 = self._clamped_box(img_cv, box, padding=6)
+                cv2.rectangle(img_cv, (x1, y1), (x2, y2), (0, 0, 0), -1)
             
             return img_cv
         except Exception as e:
@@ -121,12 +117,18 @@ class PIIRedactor:
     def _apply_text_blur(self, img_cv: np.ndarray, entity: Dict[str, Any]) -> np.ndarray:
         """Apply blur to entity area"""
         try:
-            h, w = img_cv.shape[:2]
-            kernel_size = min(51, max(h, w) // 5) if min(h, w) > 50 else 31
-            kernel_size = kernel_size if kernel_size % 2 == 1 else kernel_size + 1
-            
-            img_cv = cv2.GaussianBlur(img_cv, (kernel_size, kernel_size), 0)
-            img_cv = cv2.medianBlur(img_cv, kernel_size)
+            boxes = entity.get('boxes') or []
+            if not boxes:
+                return img_cv
+
+            for box in boxes:
+                x1, y1, x2, y2 = self._clamped_box(img_cv, box, padding=8)
+                roi = img_cv[y1:y2, x1:x2]
+                if roi.size == 0:
+                    continue
+                kernel_size = max(21, min(75, max(roi.shape[:2]) // 2))
+                kernel_size = kernel_size if kernel_size % 2 == 1 else kernel_size + 1
+                img_cv[y1:y2, x1:x2] = cv2.GaussianBlur(roi, (kernel_size, kernel_size), 0)
             
             return img_cv
         except Exception as e:
@@ -136,18 +138,40 @@ class PIIRedactor:
     def _apply_text_pixelate(self, img_cv: np.ndarray, entity: Dict[str, Any]) -> np.ndarray:
         """Apply pixelation to entity area"""
         try:
-            h, w = img_cv.shape[:2]
-            pixel_size = max(10, min(h, w) // 20)
+            boxes = entity.get('boxes') or []
+            if not boxes:
+                return img_cv
+
+            for box in boxes:
+                x1, y1, x2, y2 = self._clamped_box(img_cv, box, padding=8)
+                roi = img_cv[y1:y2, x1:x2]
+                if roi.size == 0:
+                    continue
+                h, w = roi.shape[:2]
+                pixel_size = max(6, min(h, w) // 5)
+                small_w = max(1, w // pixel_size)
+                small_h = max(1, h // pixel_size)
+                small = cv2.resize(roi, (small_w, small_h), interpolation=cv2.INTER_LINEAR)
+                img_cv[y1:y2, x1:x2] = cv2.resize(small, (w, h), interpolation=cv2.INTER_NEAREST)
             
-            # Resize down
-            small = cv2.resize(img_cv, (w // pixel_size, h // pixel_size), interpolation=cv2.INTER_LINEAR)
-            # Resize back up
-            pixelated = cv2.resize(small, (w, h), interpolation=cv2.INTER_NEAREST)
-            
-            return pixelated
+            return img_cv
         except Exception as e:
             logger.warning(f"Error applying pixelation: {e}")
             return img_cv
+
+    def _clamped_box(self, img_cv: np.ndarray, box: Dict[str, Any], padding: int = 0) -> Tuple[int, int, int, int]:
+        """Normalize an OCR box and keep it inside image bounds."""
+        h, w = img_cv.shape[:2]
+        x = int(box.get('x', box.get('left', 0)))
+        y = int(box.get('y', box.get('top', 0)))
+        width = int(box.get('width', box.get('w', 0)))
+        height = int(box.get('height', box.get('h', 0)))
+
+        x1 = max(0, x - padding)
+        y1 = max(0, y - padding)
+        x2 = min(w, x + width + padding)
+        y2 = min(h, y + height + padding)
+        return x1, y1, x2, y2
     
     # ========== DOCUMENT REDACTION ==========
     
@@ -197,7 +221,7 @@ class PIIRedactor:
             
             for entity_idx, entity in enumerate(entities):
                 method = safeguard_selections.get(entity_idx, 'redact')
-                original_value = entity.get('value', 'Hidden')
+                original_value = entity.get('raw_value') or entity.get('value', 'Hidden')
                 entity_type = entity.get('type', 'UNKNOWN')
                 
                 if method == 'replace':
@@ -231,6 +255,14 @@ class PIIRedactor:
                             if replacement in run.text:
                                 run.font.color.rgb = RGBColor(220, 53, 69)  # Red
                                 run.font.bold = True
+
+            for table in doc.tables:
+                for row in table.rows:
+                    for cell in row.cells:
+                        for paragraph in cell.paragraphs:
+                            for original, replacement in replacements.items():
+                                if original in paragraph.text:
+                                    paragraph.text = paragraph.text.replace(original, replacement)
             
             # Save protected document
             doc.save(output_path)

@@ -1,336 +1,225 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>PrivacyGuard – Login</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        body {
-            font-family: 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .container { max-width: 900px; width: 100%; padding: 20px; }
-        
-        .header {
-            text-align: center;
-            color: white;
-            margin-bottom: 40px;
-        }
-        
-        .header h1 { font-size: 48px; margin-bottom: 10px; }
-        .header p { font-size: 18px; opacity: 0.9; }
-        
-        .login-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-        }
-        
-        .login-card {
-            background: white;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-        }
-        
-        .login-card h2 { 
-            color: #333; 
-            margin-bottom: 20px; 
-            border-bottom: 2px solid #667eea; 
-            padding-bottom: 10px; 
-        }
-        
-        .login-card p { 
-            color: #666; 
-            margin-bottom: 20px; 
-            line-height: 1.6; 
-        }
-        
-        .form-group {
-            margin-bottom: 15px;
-        }
-        
-        label { 
-            display: block; 
-            margin-bottom: 5px; 
-            color: #333; 
-            font-weight: 500; 
-        }
-        
-        input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-        
-        input:focus { 
-            outline: none; 
-            border-color: #667eea; 
-            box-shadow: 0 0 5px rgba(102, 126, 234, 0.3); 
-        }
-        
-        button {
-            width: 100%;
-            padding: 12px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        button:hover { background: #764ba2; }
-        
-        .message { 
-            margin-top: 15px; 
-            padding: 12px; 
-            border-radius: 6px; 
-            text-align: center; 
-            display: none; 
-        }
-        
-        .message.error { 
-            background: #ffebee; 
-            color: #d32f2f; 
-            display: block; 
-        }
-        
-        .message.success { 
-            background: #e8f5e9; 
-            color: #388e3c; 
-            display: block; 
-        }
-        
-        .guest-info {
-            background: #e8f5e9;
-            padding: 15px;
-            border-radius: 6px;
-            font-size: 14px;
-            color: #388e3c;
-            margin-top: 20px;
-        }
-        
-        .key-display {
-            background: #f5f5f5;
-            padding: 15px;
-            border-radius: 6px;
-            margin-top: 15px;
-            border: 1px solid #ddd;
-        }
-        
-        .key-display p { 
-            margin-bottom: 10px; 
-            font-size: 14px; 
-        }
-        
-        .key-display code {
-            display: block;
-            background: white;
-            padding: 10px;
-            border-radius: 4px;
-            font-family: monospace;
-            font-weight: bold;
-            word-break: break-all;
-            color: #667eea;
-            margin: 10px 0;
-        }
-        
-        .copy-btn { 
-            padding: 8px 16px; 
-            font-size: 12px; 
-            width: auto; 
-            margin-top: 10px; 
-        }
-        
-        .register-link {
-            margin-top: 20px;
-            text-align: center;
-            color: #666;
-            font-size: 14px;
-        }
-        
-        .register-link a {
-            color: #667eea;
-            text-decoration: none;
-            cursor: pointer;
-        }
-        
-        @media (max-width: 768px) {
-            .login-grid { grid-template-columns: 1fr; }
-            .header h1 { font-size: 32px; }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PrivacyGuard — Sign In</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0f766e 0%, #0d5c55 50%, #0a3d38 100%);
+      display: flex; align-items: center; justify-content: center;
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+      font-size: 14px; padding: 20px;
+    }
+
+    .card {
+      background: #fff; border-radius: 16px;
+      box-shadow: 0 24px 64px rgba(0,0,0,.25);
+      width: min(420px, 100%); overflow: hidden;
+    }
+
+    .card-header {
+      background: linear-gradient(135deg, #0f766e, #14b8a6);
+      padding: 32px 32px 28px; text-align: center; color: #fff;
+    }
+    .logo { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 8px; }
+    .logo-text { font-size: 24px; font-weight: 800; letter-spacing: -.4px; }
+    .tagline { font-size: 13px; opacity: .85; }
+
+    .card-body { padding: 28px 32px 32px; }
+
+    /* Tab switcher */
+    .tab-bar {
+      display: flex; background: #f1f5f9; border-radius: 8px;
+      padding: 3px; margin-bottom: 24px;
+    }
+    .tab-btn {
+      flex: 1; padding: 8px 0; border: none; background: transparent;
+      border-radius: 6px; font-size: 13px; font-weight: 700; color: #64748b;
+      cursor: pointer; transition: background .15s, color .15s;
+    }
+    .tab-btn.active { background: #fff; color: #0f766e; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+
+    /* Form */
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 12px; font-weight: 700; color: #374151; margin-bottom: 6px; letter-spacing: .3px; }
+    input[type="text"], input[type="password"] {
+      width: 100%; padding: 10px 14px; border: 1.5px solid #e2e8f0;
+      border-radius: 8px; font-size: 14px; font-family: inherit;
+      outline: none; transition: border-color .15s, box-shadow .15s;
+      background: #fafafa; color: #0f172a;
+    }
+    input:focus { border-color: #0f766e; box-shadow: 0 0 0 3px rgba(15,118,110,.12); background: #fff; }
+
+    .submit-btn {
+      width: 100%; padding: 12px; border: none; border-radius: 8px;
+      background: linear-gradient(135deg, #0f766e, #14b8a6);
+      color: #fff; font-size: 15px; font-weight: 800; cursor: pointer;
+      margin-top: 8px; letter-spacing: .2px;
+      transition: opacity .15s, transform .1s;
+    }
+    .submit-btn:hover { opacity: .93; }
+    .submit-btn:active { transform: scale(.98); }
+    .submit-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* Messages */
+    .msg {
+      padding: 11px 14px; border-radius: 8px; font-size: 13px;
+      font-weight: 600; margin-bottom: 16px; display: none;
+    }
+    .msg.error { background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; }
+    .msg.success { background: #f0fdf4; color: #16a34a; border: 1px solid #86efac; }
+    .msg.visible { display: block; }
+
+    .guest-link {
+      text-align: center; margin-top: 20px; font-size: 13px; color: #64748b;
+    }
+    .guest-link a {
+      color: #0f766e; font-weight: 700; text-decoration: none;
+    }
+    .guest-link a:hover { text-decoration: underline; }
+
+    .form-panel { display: none; }
+    .form-panel.active { display: block; }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🔒 PrivacyGuard</h1>
-            <p>Intelligent Privacy Protection for Documents</p>
-        </div>
+<div class="card">
+  <div class="card-header">
+    <div class="logo">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+      <span class="logo-text">PrivacyGuard</span>
+    </div>
+    <p class="tagline">Data regulation intelligence — scan, classify, and safeguard sensitive documents.</p>
+  </div>
 
-        <div class="login-grid">
-            <!-- Admin Section -->
-            <div class="login-card">
-                <h2>👨‍💼 Admin Access</h2>
-                <p>Manage documents, view originals, and control access.</p>
-                
-                <div id="admin-form">
-                    <div class="form-group">
-                        <label>Email</label>
-                        <input type="email" id="admin-email" placeholder="your@email.com">
-                    </div>
-                    <div class="form-group">
-                        <label>Admin Key</label>
-                        <input type="password" id="admin-key" placeholder="Your admin key">
-                    </div>
-                    <button onclick="adminLogin()">Login as Admin</button>
-                    
-                    <div class="message error" id="admin-error"></div>
-                    <div class="message success" id="admin-success"></div>
-
-                    <div class="register-link">
-                        First time? <a onclick="showRegister(); return false;">Register here</a>
-                    </div>
-                </div>
-
-                <div id="admin-register" style="display: none;">
-                    <p style="margin-bottom: 15px;">Generate your unique admin key</p>
-                    <div class="form-group">
-                        <label>Email</label>
-                        <input type="email" id="register-email" placeholder="your@email.com">
-                    </div>
-                    <button onclick="adminRegister()">Generate Admin Key</button>
-                    
-                    <div id="key-result"></div>
-
-                    <div style="margin-top: 20px; text-align: center;">
-                        <button style="background: #999;" onclick="showLogin(); return false;">Back to Login</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Guest Section -->
-            <div class="login-card">
-                <h2>👥 Guest Access</h2>
-                <p>View protected documents shared with you. No credentials required.</p>
-                
-                <p style="color: #667eea; font-weight: 500; margin: 20px 0;">Guest access allows you to:</p>
-                <ul style="margin-left: 20px; color: #666; line-height: 1.8;">
-                    <li>✓ View protected documents</li>
-                    <li>✓ Download redacted versions</li>
-                    <li>✓ See risk assessments</li>
-                    <li>✗ Cannot view originals</li>
-                    <li>✗ Cannot upload documents</li>
-                </ul>
-                
-                <button onclick="guestLogin()" style="margin-top: 30px;">Continue as Guest</button>
-                
-                <div class="guest-info">
-                    <p>💡 <strong>Tip:</strong> Ask an admin for a document link to access protected files.</p>
-                </div>
-            </div>
-        </div>
+  <div class="card-body">
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('login')">Sign In</button>
+      <button class="tab-btn" onclick="switchTab('register')">Create Account</button>
     </div>
 
-    <script>
-        function showRegister() {
-            document.getElementById('admin-form').style.display = 'none';
-            document.getElementById('admin-register').style.display = 'block';
-        }
+    <div id="msgBox" class="msg"></div>
 
-        function showLogin() {
-            document.getElementById('admin-form').style.display = 'block';
-            document.getElementById('admin-register').style.display = 'none';
-        }
+    <!-- Login form -->
+    <div id="loginPanel" class="form-panel active">
+      <div class="form-group">
+        <label for="loginUsername">Username</label>
+        <input type="text" id="loginUsername" placeholder="Enter your username" autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label for="loginPassword">Password</label>
+        <input type="password" id="loginPassword" placeholder="Enter your password" autocomplete="current-password">
+      </div>
+      <button class="submit-btn" id="loginBtn" onclick="doLogin()">Sign In</button>
+    </div>
 
-        function adminLogin() {
-            const email = document.getElementById('admin-email').value;
-            const key = document.getElementById('admin-key').value;
+    <!-- Register form -->
+    <div id="registerPanel" class="form-panel">
+      <div class="form-group">
+        <label for="regUsername">Username</label>
+        <input type="text" id="regUsername" placeholder="Choose a username (min 3 characters)" autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label for="regPassword">Password</label>
+        <input type="password" id="regPassword" placeholder="Choose a password (min 6 characters)" autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label for="regConfirm">Confirm Password</label>
+        <input type="password" id="regConfirm" placeholder="Re-enter your password" autocomplete="new-password">
+      </div>
+      <button class="submit-btn" id="registerBtn" onclick="doRegister()">Create Account</button>
+    </div>
 
-            if (!email || !key) {
-                showError('admin-error', 'Email and key required');
-                return;
-            }
+    <div class="guest-link">
+      <a href="/">Continue as guest</a> — uploads are not saved after session ends
+    </div>
+  </div>
+</div>
 
-            fetch('/api/auth/admin-login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, key })
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    localStorage.setItem('admin-email', email);
-                    window.location.href = data.redirect;
-                } else {
-                    showError('admin-error', data.error);
-                }
-            });
-        }
+<script>
+function switchTab(tab) {
+  document.getElementById('loginPanel').classList.toggle('active', tab === 'login');
+  document.getElementById('registerPanel').classList.toggle('active', tab === 'register');
+  document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', i === (tab === 'login' ? 0 : 1)));
+  clearMsg();
+}
 
-        function adminRegister() {
-            const email = document.getElementById('register-email').value;
+function showMsg(text, type) {
+  const el = document.getElementById('msgBox');
+  el.textContent = text;
+  el.className = `msg ${type} visible`;
+}
+function clearMsg() {
+  const el = document.getElementById('msgBox');
+  el.className = 'msg';
+}
 
-            if (!email) {
-                alert('Email required');
-                return;
-            }
+async function doLogin() {
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  if (!username || !password) { showMsg('Please enter your username and password.', 'error'); return; }
 
-            fetch('/api/auth/admin-register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email })
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    const keyResult = document.getElementById('key-result');
-                    keyResult.innerHTML = `
-                        <div class="key-display">
-                            <p><strong>✅ Admin Key Generated!</strong></p>
-                            <p>Save this key safely. You'll need it to login.</p>
-                            <code>${data.admin_key}</code>
-                            <button class="copy-btn" onclick="copyToClipboard('${data.admin_key}')">Copy Key</button>
-                        </div>
-                    `;
-                } else {
-                    alert('Error: ' + data.error);
-                }
-            });
-        }
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  clearMsg();
 
-        function guestLogin() {
-            fetch('/api/auth/guest-login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    window.location.href = data.redirect;
-                }
-            });
-        }
+  try {
+    const r = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Login failed');
+    showMsg(`Welcome back, ${data.username}! Redirecting…`, 'success');
+    setTimeout(() => window.location.href = '/', 800);
+  } catch (err) {
+    showMsg(err.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Sign In';
+  }
+}
 
-        function showError(elementId, message) {
-            const el = document.getElementById(elementId);
-            el.innerText = message;
-            el.style.display = 'block';
-        }
+async function doRegister() {
+  const username = document.getElementById('regUsername').value.trim();
+  const password = document.getElementById('regPassword').value;
+  const confirm = document.getElementById('regConfirm').value;
+  if (!username || !password) { showMsg('Please fill in all fields.', 'error'); return; }
+  if (password !== confirm) { showMsg('Passwords do not match.', 'error'); return; }
 
-        function copyToClipboard(text) {
-            navigator.clipboard.writeText(text);
-            alert('Key copied to clipboard!');
-        }
-    </script>
+  const btn = document.getElementById('registerBtn');
+  btn.disabled = true; btn.textContent = 'Creating account…';
+  clearMsg();
+
+  try {
+    const r = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Registration failed');
+    showMsg(`Account created! Welcome, ${data.username}! Redirecting…`, 'success');
+    setTimeout(() => window.location.href = '/', 800);
+  } catch (err) {
+    showMsg(err.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Create Account';
+  }
+}
+
+// Allow Enter key submission
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  const loginActive = document.getElementById('loginPanel').classList.contains('active');
+  if (loginActive) doLogin(); else doRegister();
+});
+</script>
 </body>
 </html>

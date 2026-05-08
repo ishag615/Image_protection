@@ -104,17 +104,53 @@ class OCRProcessor:
             else:
                 gray = img_array
             
-            # Apply preprocessing for better OCR
+            # Try multiple preprocessing variants to maximise text extraction.
+            # ID cards, SSN cards, and debit cards often have colored or dark
+            # backgrounds that need inverted or adaptive preprocessing.
             processed = self._preprocess_image(gray)
-            
-            # Extract text with Tesseract
-            full_text = pytesseract.image_to_string(processed)
+
+            # Inverted: for cards with dark backgrounds / light text
+            inverted_gray = cv2.bitwise_not(gray)
+            inverted_processed = self._preprocess_image(inverted_gray)
+
+            # Adaptive threshold: better for uneven or directional lighting
+            adaptive = cv2.adaptiveThreshold(
+                gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
+            )
+            adaptive_up = cv2.resize(
+                adaptive, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC
+            )
+
+            ocr_inputs = [
+                (img,               '--psm 3 --oem 3'),  # original, auto-segment
+                (img,               '--psm 6 --oem 3'),  # original, uniform block
+                (processed,         '--psm 6 --oem 3'),  # preprocessed, block
+                (processed,         '--psm 11 --oem 3'), # preprocessed, sparse
+                (inverted_processed,'--psm 6 --oem 3'),  # inverted (dark-bg cards)
+                (adaptive_up,       '--psm 6 --oem 3'),  # adaptive threshold
+            ]
+            text_parts = []
+            seen_text = set()
+            for source_img, config in ocr_inputs:
+                text = pytesseract.image_to_string(source_img, config=config)
+                cleaned = text.strip()
+                if cleaned and cleaned not in seen_text:
+                    seen_text.add(cleaned)
+                    text_parts.append(cleaned)
+            full_text = '\n'.join(text_parts)
             
             # Get detailed data (character bounding boxes, confidence)
             data = pytesseract.image_to_data(processed, output_type=pytesseract.Output.DICT)
             
             # Calculate confidence
-            confidences = [int(c) for c in data['conf'] if c != '-1']
+            confidences = []
+            for value in data['conf']:
+                try:
+                    confidence = float(value)
+                except ValueError:
+                    continue
+                if confidence >= 0:
+                    confidences.append(confidence)
             avg_confidence = np.mean(confidences) if confidences else 0
             
             return {

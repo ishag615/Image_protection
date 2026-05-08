@@ -205,3 +205,12 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# PrivacyGuard runtime data — never commit user uploads or credentials
+uploads/
+protected_documents/
+temp_images/
+flask_session/
+documents.json
+users.json
+key_vault.json
